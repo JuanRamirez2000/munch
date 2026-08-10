@@ -106,6 +106,12 @@ export default function CreateSessionPage() {
         weights: { distanceImportance: distImportance, cuisineImportance },
       });
       setHostToken(session.shortCode, hostToken);
+      try {
+        await fetch(`/api/sessions/${session.id}/build-deck`, { method: "POST" });
+      } catch {
+        // Deck build failed — share/lobby still work fine; swiping will just see an empty
+        // deck until this is retried (no retry UX yet, that lands with the swipe screen).
+      }
       router.push(`/s/${session.shortCode}/share`);
     } catch {
       setSubmitError("Couldn't create the session. Please try again.");

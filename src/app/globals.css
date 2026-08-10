@@ -1,26 +1,68 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-bg: #f6f3ee;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f1ede6;
+  --color-ink: #292521;
+  --color-ink-muted: #5b564d;
+  --color-ink-faint: #8a8578;
+  --color-accent: #c1602a;
+  --color-accent-hover: #8a421a;
+  --color-accent-tint: #fbeee4;
+  --color-like: #2f8f4e;
+  --color-like-tint: #e5f3e7;
+  --color-pass: #b23a2e;
+  --color-pass-tint: #fbeae7;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-alt: var(--color-surface-alt);
+  --color-ink: var(--color-ink);
+  --color-ink-muted: var(--color-ink-muted);
+  --color-ink-faint: var(--color-ink-faint);
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-tint: var(--color-accent-tint);
+  --color-like: var(--color-like);
+  --color-like-tint: var(--color-like-tint);
+  --color-pass: var(--color-pass);
+  --color-pass-tint: var(--color-pass-tint);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-roboto);
+
+  --radius-control: 10px;
+  --radius-button: 14px;
+  --radius-thumb: 10px;
+  --radius-card: 24px;
+  --radius-hero: 28px;
+  --radius-shell: 40px;
+
+  --shadow-elevation-sm: 0 1px 2px rgba(30, 20, 10, 0.06);
+  --shadow-elevation-md: 0 8px 20px -10px rgba(30, 20, 10, 0.16);
+  --shadow-elevation-lg: 0 24px 48px -20px rgba(30, 20, 10, 0.22);
+  --shadow-accent-glow: 0 6px 14px -6px rgba(193, 96, 42, 0.5);
+  --shadow-like-glow: 0 6px 14px -6px rgba(47, 143, 78, 0.5);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-ink);
+}
+
+a {
+  color: var(--color-accent);
+}
+a:hover {
+  color: var(--color-accent-hover);
+}
+
+input[type="range"] {
+  accent-color: var(--color-accent);
+}
+
+::selection {
+  background: var(--color-accent-tint);
 }

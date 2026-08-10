@@ -36,6 +36,8 @@ yarn-error.log*
 # in the client bundle by design) plus the provider selector — committed so Vercel's
 # git-based build picks it up with no manual dashboard step.
 !.env.production
+# ...and the template (no real values, just documents which vars exist).
+!.env.example
 
 # vercel
 .vercel

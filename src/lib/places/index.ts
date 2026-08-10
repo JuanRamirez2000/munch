@@ -1,4 +1,5 @@
 import { MockPlacesProvider } from "./adapters/mock";
+import { YelpPlacesProvider } from "./adapters/yelp";
 import type { PlacesProvider } from "./types";
 
 export type { Place, PlaceSearchFilters, PlacesProvider, SearchNearbyOptions } from "./types";
@@ -7,9 +8,13 @@ export type { Place, PlaceSearchFilters, PlacesProvider, SearchNearbyOptions } f
 // PLACES_PROVIDER. Nothing else in the app imports an adapter directly.
 const PROVIDER_FACTORIES: Record<string, () => PlacesProvider> = {
   mock: () => new MockPlacesProvider(),
+  yelp: () => {
+    const apiKey = process.env.YELP_API_KEY;
+    if (!apiKey) throw new Error("YELP_API_KEY is not set");
+    return new YelpPlacesProvider(apiKey);
+  },
   // google: () => new GooglePlacesProvider(),
   // foursquare: () => new FoursquarePlacesProvider(),
-  // yelp: () => new YelpPlacesProvider(),
 };
 
 let cachedProvider: PlacesProvider | undefined;

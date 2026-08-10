@@ -246,7 +246,14 @@ export default function SwipePage() {
           </div>
         ) : currentPlace ? (
           <>
-            <SwipeCard place={currentPlace} distanceMiles={distanceMiles} x={x} active={!voting} onRelease={handleRelease} />
+            <SwipeCard
+              key={currentPlace.id}
+              place={currentPlace}
+              distanceMiles={distanceMiles}
+              x={x}
+              active={!voting}
+              onRelease={handleRelease}
+            />
             <div className="flex gap-3">
               <button
                 type="button"

@@ -44,4 +44,6 @@ export const MOCK_SEED_PLACES: MockSeedPlace[] = [
   { id: "mock-mediterraneo", name: "Mediterraneo", cuisines: ["Mediterranean"], priceLevel: 2, rating: 4.6, distanceMiles: 2.7, bearingDeg: 175, openNow: true, address: "63 Olive Way" },
   { id: "mock-olive-and-fig", name: "Olive & Fig", cuisines: ["Mediterranean"], priceLevel: 1, rating: 4.0, distanceMiles: 14.5, bearingDeg: 55, openNow: true, address: "740 Fig St" },
   { id: "mock-ember-steakhouse", name: "Ember Steakhouse", cuisines: ["Steakhouse"], priceLevel: 3, rating: 4.7, distanceMiles: 10.2, bearingDeg: 200, openNow: true, address: "5 Grill Rd" },
+  { id: "mock-quickflame", name: "QuickFlame Drive-Thru", cuisines: ["Fast Food"], priceLevel: 0, rating: 3.8, distanceMiles: 0.7, bearingDeg: 130, openNow: true, address: "40 Speedway Blvd" },
+  { id: "mock-corner-combo", name: "Corner Combo", cuisines: ["Fast Food", "Burgers"], priceLevel: 1, rating: 4.0, distanceMiles: 2.3, bearingDeg: 355, openNow: true, address: "8 Rapid Ave" },
 ];

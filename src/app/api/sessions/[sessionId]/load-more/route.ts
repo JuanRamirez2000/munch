@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { milesToMeters } from "@/lib/geo";
-import { scorePlaces, scoredPlaceToRow } from "@/lib/deck/ranking";
+import { dedupeByName, scorePlaces, scoredPlaceToRow } from "@/lib/deck/ranking";
 import { getPlacesProvider } from "@/lib/places";
 import type { Place } from "@/lib/places";
 import { createSupabaseServerClient } from "@/lib/supabase/client";
@@ -32,7 +32,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
 
   const { data: existingPlaces, error: existingError } = await supabase
     .from("places")
-    .select("provider_place_id")
+    .select("provider_place_id, name")
     .eq("session_id", sessionId);
 
   if (existingError) {
@@ -40,6 +40,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
   }
 
   const alreadyCached = new Set(existingPlaces.map((p) => p.provider_place_id));
+  const alreadyCachedNames = new Set(existingPlaces.map((p) => p.name.trim().toLowerCase()));
   const filters = session.filters as unknown as SessionFilters;
   const weights = session.weights as unknown as SessionWeights;
   const origin = { lat: session.origin_lat, lng: session.origin_lng };
@@ -92,16 +93,21 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
 
   const radiusMeters = milesToMeters(radiusMiles);
   const ranked = scorePlaces(fetched, origin, filters, weights, radiusMeters).sort((a, b) => b.score - a.score);
-  const rows = ranked.map((r, index) => scoredPlaceToRow(session.id, r, startOrder + index));
+  const deduped = dedupeByName(ranked, alreadyCachedNames);
+  const rows = deduped.map((r, index) => scoredPlaceToRow(session.id, r, startOrder + index));
 
-  const { error: upsertError } = await supabase
-    .from("places")
-    .upsert(rows, { onConflict: "session_id,provider_place_id" });
+  if (rows.length > 0) {
+    const { error: upsertError } = await supabase
+      .from("places")
+      .upsert(rows, { onConflict: "session_id,provider_place_id" });
 
-  if (upsertError) {
-    return NextResponse.json({ error: upsertError.message }, { status: 500 });
+    if (upsertError) {
+      return NextResponse.json({ error: upsertError.message }, { status: 500 });
+    }
   }
 
+  // Persisted even when every fetched place turned out to be a name-duplicate — otherwise the
+  // next load-more call retries the same already-exhausted radius instead of widening further.
   if (radiusMiles !== filters.radiusMiles) {
     await supabase
       .from("sessions")

@@ -17,6 +17,9 @@ const CUISINE_TO_YELP_ALIAS: Record<string, string> = {
   BBQ: "bbq",
   Vegan: "vegan",
   Burgers: "burgers",
+  // Yelp's taxonomy names this category "hotdogs" for historical reasons; the display title
+  // is "Fast Food", which is what actually reaches users.
+  "Fast Food": "hotdogs",
 };
 const YELP_ALIAS_TO_CUISINE: Record<string, string> = Object.fromEntries(
   Object.entries(CUISINE_TO_YELP_ALIAS).map(([cuisine, alias]) => [alias, cuisine])
@@ -109,7 +112,10 @@ export class YelpPlacesProvider implements PlacesProvider {
         return {
           id: b.id,
           name: b.name,
-          photoUrl: b.image_url || null,
+          // Yelp's search response only ever includes one photo per business (a details call
+          // per business would be needed for more, which we won't do per-place in a shared
+          // deck build) — the swipe card's photo-cycling control just won't render for these.
+          photoUrls: b.image_url ? [b.image_url] : [],
           cuisines,
           priceLevel: toPriceLevel(b.price),
           rating: b.rating,

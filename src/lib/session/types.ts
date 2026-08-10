@@ -1,4 +1,4 @@
-export const CUISINE_OPTIONS = ["Sushi", "Pizza", "Thai", "BBQ", "Vegan", "Burgers"] as const;
+export const CUISINE_OPTIONS = ["Sushi", "Pizza", "Thai", "BBQ", "Vegan", "Burgers", "Fast Food"] as const;
 export type CuisineOption = (typeof CUISINE_OPTIONS)[number];
 export type CuisineState = "none" | "include" | "exclude";
 

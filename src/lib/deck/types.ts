@@ -1,7 +1,7 @@
 export interface DeckPlace {
   id: string;
   name: string;
-  photoUrl: string | null;
+  photoUrls: string[];
   cuisines: string[];
   priceLevel: number | null;
   rating: number | null;

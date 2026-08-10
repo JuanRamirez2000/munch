@@ -5,7 +5,7 @@ export interface Place {
   /** Provider-scoped identifier (e.g. Google's place_id) — stable across searches, not our DB uuid. */
   id: string;
   name: string;
-  photoUrl: string | null;
+  photoUrls: string[];
   cuisines: string[];
   /** 0 ($) to 3 ($$$$), or null if the provider doesn't report it. */
   priceLevel: number | null;

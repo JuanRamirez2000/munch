@@ -3,7 +3,7 @@ interface PlacePhotoPlaceholderProps {
 }
 
 // Matches the handoff's placeholder exactly — a 45deg diagonal stripe with a monospace
-// caption — until real restaurant photography (or a provider that returns photoUrl) lands.
+// caption. Shown whenever a place has no photos at all (provider returned none).
 export function PlacePhotoPlaceholder({ className = "" }: PlacePhotoPlaceholderProps) {
   return (
     <div

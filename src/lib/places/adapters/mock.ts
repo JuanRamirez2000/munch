@@ -59,7 +59,7 @@ export class MockPlacesProvider implements PlacesProvider {
       const place: Place = {
         id: seed.id,
         name: seed.name,
-        photoUrl: null,
+        photoUrls: [],
         cuisines: seed.cuisines,
         priceLevel: seed.priceLevel,
         rating: seed.rating,

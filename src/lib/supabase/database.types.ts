@@ -59,7 +59,7 @@ export type Database = {
           lng: number
           name: string
           open_now: boolean | null
-          photo_url: string | null
+          photo_urls: string[]
           price_level: number | null
           provider_place_id: string
           rating: number | null
@@ -75,7 +75,7 @@ export type Database = {
           lng: number
           name: string
           open_now?: boolean | null
-          photo_url?: string | null
+          photo_urls?: string[]
           price_level?: number | null
           provider_place_id: string
           rating?: number | null
@@ -91,7 +91,7 @@ export type Database = {
           lng?: number
           name?: string
           open_now?: boolean | null
-          photo_url?: string | null
+          photo_urls?: string[]
           price_level?: number | null
           provider_place_id?: string
           rating?: number | null

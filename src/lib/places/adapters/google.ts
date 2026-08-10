@@ -33,6 +33,7 @@ const CUISINE_TO_GOOGLE_TYPE: Record<string, string> = {
   BBQ: "barbecue_restaurant",
   Vegan: "vegan_restaurant",
   Burgers: "hamburger_restaurant",
+  "Fast Food": "fast_food_restaurant",
 };
 const GOOGLE_TYPE_TO_CUISINE: Record<string, string> = Object.fromEntries(
   Object.entries(CUISINE_TO_GOOGLE_TYPE).map(([cuisine, type]) => [type, cuisine])
@@ -87,11 +88,18 @@ function toCuisines(types: string[] | undefined): string[] {
   return Array.from(new Set([...canonical, ...humanized]));
 }
 
-function toPhotoUrl(photos: { name: string }[] | undefined): string | null {
-  if (!photos || photos.length === 0) return null;
+// Capped well under Google's per-place photo count to keep the swipe card's cycling dots
+// (and the deck-build request) reasonably sized — a place rarely has more than a couple of
+// photos worth showing anyway.
+const MAX_PHOTOS_PER_PLACE = 5;
+
+function toPhotoUrls(photos: { name: string }[] | undefined): string[] {
+  if (!photos) return [];
   // Proxied through our own route (src/app/api/photos/google/route.ts) — Google's photo
   // media endpoint requires the API key as a query param, which must never reach the client.
-  return `/api/photos/google?name=${encodeURIComponent(photos[0].name)}`;
+  return photos
+    .slice(0, MAX_PHOTOS_PER_PLACE)
+    .map((photo) => `/api/photos/google?name=${encodeURIComponent(photo.name)}`);
 }
 
 function matchesMaxPrice(priceLevel: number | null, maxPriceLevel: number | null): boolean {
@@ -154,7 +162,7 @@ export class GooglePlacesProvider implements PlacesProvider {
         return {
           id: p.id,
           name: p.displayName?.text ?? "Unnamed",
-          photoUrl: toPhotoUrl(p.photos),
+          photoUrls: toPhotoUrls(p.photos),
           cuisines: toCuisines(p.types),
           priceLevel,
           rating: p.rating ?? null,

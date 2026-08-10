@@ -54,6 +54,26 @@ function cuisineMatchScore(placeCuisines: string[], cuisineIncludes: string[]): 
   return clamp01(overlap / cuisineIncludes.length);
 }
 
+// Chains often have several nearby locations that a provider returns as distinct place IDs —
+// same name, different address/place ID. Keeping only the first occurrence per name avoids a
+// deck with three near-identical "Chipotle" cards. Call after sorting by score so the
+// highest-ranked branch of a chain is the one that survives. `alreadySeenNames` lets load-more
+// dedupe against names already cached in earlier pages, not just this batch.
+export function dedupeByName(
+  scored: ScoredPlace[],
+  alreadySeenNames: Set<string> = new Set()
+): ScoredPlace[] {
+  const seen = new Set(alreadySeenNames);
+  const result: ScoredPlace[] = [];
+  for (const entry of scored) {
+    const key = entry.place.name.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(entry);
+  }
+  return result;
+}
+
 // Shared by build-deck (fresh deck) and load-more (appending a page) so both write rows the
 // same shape — deckOrder is the caller's job since it depends on how many places already exist.
 export function scoredPlaceToRow(
@@ -65,7 +85,7 @@ export function scoredPlaceToRow(
     session_id: sessionId,
     provider_place_id: scored.place.id,
     name: scored.place.name,
-    photo_url: scored.place.photoUrl,
+    photo_urls: scored.place.photoUrls,
     cuisines: scored.place.cuisines,
     price_level: scored.place.priceLevel,
     rating: scored.place.rating,

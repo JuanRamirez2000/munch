@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { milesToMeters } from "@/lib/geo";
-import { scorePlaces, scoredPlaceToRow } from "@/lib/deck/ranking";
+import { dedupeByName, scorePlaces, scoredPlaceToRow } from "@/lib/deck/ranking";
 import { getPlacesProvider } from "@/lib/places";
 import { createSupabaseServerClient } from "@/lib/supabase/client";
 import type { SessionFilters, SessionWeights } from "@/lib/session/types";
@@ -51,8 +51,9 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
   const ranked = scorePlaces(places, origin, filters, weights, radiusMeters).sort(
     (a, b) => b.score - a.score
   );
+  const deduped = dedupeByName(ranked);
 
-  const rows = ranked.map((r, index) => scoredPlaceToRow(session.id, r, index));
+  const rows = deduped.map((r, index) => scoredPlaceToRow(session.id, r, index));
 
   if (rows.length > 0) {
     const { error: upsertError } = await supabase

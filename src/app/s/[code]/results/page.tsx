@@ -4,7 +4,9 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ScreenCenter, ScreenContainer } from "@/components/ScreenContainer";
 import { PlacePhotoPlaceholder } from "@/components/PlacePhotoPlaceholder";
-import { getLikeCounts, getTotalVoteCount, listDeckPlaces } from "@/lib/deck/api";
+import { AvatarStack } from "@/components/ui/AvatarStack";
+import { getLikeCounts, getLikersByPlace, getTotalVoteCount, listDeckPlaces } from "@/lib/deck/api";
+import type { Liker } from "@/lib/deck/api";
 import type { DeckPlace } from "@/lib/deck/types";
 import { getDirectionsUrl } from "@/lib/directions";
 import { getParticipantByToken, getSessionByShortCode, listParticipants } from "@/lib/session/api";
@@ -24,6 +26,7 @@ export default function ResultsPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [places, setPlaces] = useState<DeckPlace[]>([]);
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
+  const [likersByPlace, setLikersByPlace] = useState<Record<string, Liker[]>>({});
   const [totalVotes, setTotalVotes] = useState(0);
   const [participantCount, setParticipantCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -56,9 +59,10 @@ export default function ResultsPage() {
         return;
       }
 
-      const [deck, counts, votes, participants] = await Promise.all([
+      const [deck, counts, likers, votes, participants] = await Promise.all([
         listDeckPlaces(found.id),
         getLikeCounts(found.id),
+        getLikersByPlace(found.id),
         getTotalVoteCount(found.id),
         listParticipants(found.id),
       ]);
@@ -67,6 +71,7 @@ export default function ResultsPage() {
       setSession(found);
       setPlaces(deck);
       setLikeCounts(counts);
+      setLikersByPlace(likers);
       setTotalVotes(votes);
       setParticipantCount(participants.length);
       setLoading(false);
@@ -137,9 +142,9 @@ export default function ResultsPage() {
           <>
             <div className="overflow-hidden rounded-card shadow-elevation-md">
               <div className="h-[170px]">
-                {top.place.photoUrl ? (
+                {top.place.photoUrls[0] ? (
                   // eslint-disable-next-line @next/next/no-img-element -- provider photo, arbitrary remote URL
-                  <img src={top.place.photoUrl} alt={top.place.name} className="h-full w-full object-cover" />
+                  <img src={top.place.photoUrls[0]} alt={top.place.name} className="h-full w-full object-cover" />
                 ) : (
                   <PlacePhotoPlaceholder className="h-full" />
                 )}
@@ -149,10 +154,13 @@ export default function ResultsPage() {
                   {unanimous ? "Everyone agreed! 🎉" : "Top pick"}
                 </span>
                 <div className="text-[19px] font-bold text-ink">{top.place.name}</div>
-                <div className="text-[13.5px] text-ink-muted">
-                  {unanimous
-                    ? "Everyone who's voted loved it"
-                    : `${top.likeCount} of ${participantCount} friends liked it`}
+                <div className="flex items-center gap-2">
+                  <span className="text-[13.5px] text-ink-muted">
+                    {unanimous
+                      ? "Everyone who's voted loved it"
+                      : `${top.likeCount} of ${participantCount} friends liked it`}
+                  </span>
+                  <AvatarStack likers={likersByPlace[top.place.id] ?? []} size={22} ringClassName="ring-surface" />
                 </div>
                 <a
                   href={getDirectionsUrl(top.place)}
@@ -171,10 +179,10 @@ export default function ResultsPage() {
                   <div key={entry.place.id} className="flex items-center gap-2.5">
                     <span className="w-[18px] text-[13.5px] font-bold text-ink-muted">{i + 2}</span>
                     <div className="h-[38px] w-[38px] shrink-0 overflow-hidden rounded-thumb">
-                      {entry.place.photoUrl ? (
+                      {entry.place.photoUrls[0] ? (
                         // eslint-disable-next-line @next/next/no-img-element -- provider photo, arbitrary remote URL
                         <img
-                          src={entry.place.photoUrl}
+                          src={entry.place.photoUrls[0]}
                           alt={entry.place.name}
                           className="h-full w-full object-cover"
                         />
@@ -183,12 +191,13 @@ export default function ResultsPage() {
                       )}
                     </div>
                     <span className="flex-1 truncate text-[14.5px] font-semibold text-ink">{entry.place.name}</span>
-                    <div className="h-2 w-[70px] shrink-0 overflow-hidden rounded-full bg-surface-alt">
+                    <div className="h-2 w-[44px] shrink-0 overflow-hidden rounded-full bg-surface-alt">
                       <div
                         className="h-full rounded-full bg-accent"
                         style={{ width: `${(entry.likeCount / participantCount) * 100}%` }}
                       />
                     </div>
+                    <AvatarStack likers={likersByPlace[entry.place.id] ?? []} size={18} />
                     <span className="w-[14px] shrink-0 text-right text-[13px] text-ink-muted">
                       {entry.likeCount}
                     </span>

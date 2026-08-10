@@ -29,6 +29,8 @@ export default function SwipePage() {
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreMessage, setLoadMoreMessage] = useState<string | null>(null);
 
   const x = useMotionValue(0);
 
@@ -172,6 +174,30 @@ export default function SwipePage() {
     }
   }
 
+  async function handleLoadMore() {
+    if (!session || loadingMore) return;
+    setLoadingMore(true);
+    setLoadMoreMessage(null);
+    try {
+      const response = await fetch(`/api/sessions/${session.id}/load-more`, { method: "POST" });
+      const body = await response.json();
+      if (!response.ok) {
+        setLoadMoreMessage("Couldn't load more places. Try again.");
+        return;
+      }
+      if (body.count === 0) {
+        setLoadMoreMessage("No more places found nearby.");
+        return;
+      }
+      const deck = await listDeckPlaces(session.id);
+      setPlaces(deck);
+    } catch {
+      setLoadMoreMessage("Couldn't load more places. Try again.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
   if (loading || !session) {
     return (
       <ScreenCenter>
@@ -189,13 +215,25 @@ export default function SwipePage() {
         </div>
       </div>
 
-      {topPlace && (
-        <div className="px-5 pt-3">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-accent-tint px-3.5 py-1.5 text-[12.5px] font-semibold text-accent">
-            Top: {topPlace.name} <span className="opacity-70">▲</span>
-          </div>
-        </div>
-      )}
+      <div className="px-5 pt-3">
+        <button
+          type="button"
+          onClick={() => router.push(`/s/${code}/results`)}
+          className={
+            topPlace
+              ? "inline-flex items-center gap-1.5 rounded-full bg-accent-tint px-3.5 py-1.5 text-[12.5px] font-semibold text-accent"
+              : "inline-flex items-center gap-1.5 rounded-full bg-surface-alt px-3.5 py-1.5 text-[12.5px] font-semibold text-ink-muted"
+          }
+        >
+          {topPlace ? (
+            <>
+              Top: {topPlace.name} <span className="opacity-70">▲</span>
+            </>
+          ) : (
+            "See leaderboard"
+          )}
+        </button>
+      </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 px-5 pb-[calc(env(safe-area-inset-bottom)+14px)] pt-4">
         {places.length === 0 ? (
@@ -228,9 +266,18 @@ export default function SwipePage() {
             </div>
           </>
         ) : (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
             <div className="text-[19px] font-bold text-ink">You&apos;re done!</div>
             <div className="text-[14.5px] text-ink-muted">Waiting on the rest of the group…</div>
+            {loadMoreMessage && <div className="text-[13px] text-ink-faint">{loadMoreMessage}</div>}
+            <button
+              type="button"
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+              className="mt-2 rounded-button bg-surface-alt px-5 py-3 text-[14px] font-semibold text-ink disabled:opacity-40"
+            >
+              {loadingMore ? "Loading…" : "Load more places"}
+            </button>
           </div>
         )}
       </div>

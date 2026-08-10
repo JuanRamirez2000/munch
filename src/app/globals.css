@@ -47,22 +47,26 @@
   --shadow-like-glow: 0 6px 14px -6px rgba(47, 143, 78, 0.5);
 }
 
-body {
-  background: var(--color-bg);
-  color: var(--color-ink);
-}
+/* Unlayered rules beat Tailwind's utility layer regardless of specificity — without @layer
+   base here, a plain `text-white` on an <a> loses to this and renders invisible. */
+@layer base {
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+  }
 
-a {
-  color: var(--color-accent);
-}
-a:hover {
-  color: var(--color-accent-hover);
-}
+  a {
+    color: var(--color-accent);
+  }
+  a:hover {
+    color: var(--color-accent-hover);
+  }
 
-input[type="range"] {
-  accent-color: var(--color-accent);
-}
+  input[type="range"] {
+    accent-color: var(--color-accent);
+  }
 
-::selection {
-  background: var(--color-accent-tint);
+  ::selection {
+    background: var(--color-accent-tint);
+  }
 }

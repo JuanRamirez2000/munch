@@ -61,6 +61,17 @@ export async function getLikeCounts(sessionId: string): Promise<Record<string, n
   return counts;
 }
 
+export async function getTotalVoteCount(sessionId: string): Promise<number> {
+  const supabase = getSupabaseBrowserClient();
+  const { count, error } = await supabase
+    .from("votes")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", sessionId);
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function castVote(input: {
   sessionId: string;
   participantId: string;

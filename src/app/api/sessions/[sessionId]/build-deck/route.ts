@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { milesToMeters } from "@/lib/geo";
-import { scorePlaces } from "@/lib/deck/ranking";
+import { scorePlaces, scoredPlaceToRow } from "@/lib/deck/ranking";
 import { getPlacesProvider } from "@/lib/places";
 import { createSupabaseServerClient } from "@/lib/supabase/client";
-import type { Database } from "@/lib/supabase/database.types";
 import type { SessionFilters, SessionWeights } from "@/lib/session/types";
 
 // Runs once per session, right after creation (see the Create Session flow) — never per
@@ -45,21 +44,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     (a, b) => b.score - a.score
   );
 
-  const rows: Database["public"]["Tables"]["places"]["Insert"][] = ranked.map((r, index) => ({
-    session_id: session.id,
-    provider_place_id: r.place.id,
-    name: r.place.name,
-    photo_url: r.place.photoUrl,
-    cuisines: r.place.cuisines,
-    price_level: r.place.priceLevel,
-    rating: r.place.rating,
-    lat: r.place.lat,
-    lng: r.place.lng,
-    address: r.place.address,
-    open_now: r.place.openNow,
-    deck_order: index,
-    score: r.score,
-  }));
+  const rows = ranked.map((r, index) => scoredPlaceToRow(session.id, r, index));
 
   if (rows.length > 0) {
     const { error: upsertError } = await supabase

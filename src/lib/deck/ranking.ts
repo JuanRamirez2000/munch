@@ -1,6 +1,7 @@
 import { haversineDistanceMeters, type GeoPoint } from "@/lib/geo";
 import type { Place } from "@/lib/places";
 import type { SessionFilters, SessionWeights } from "@/lib/session/types";
+import type { Database } from "@/lib/supabase/database.types";
 
 // Rating always counts at this baseline strength — unlike distance/cuisine, quality isn't
 // something the host dials down to zero, so it's fixed rather than driven by a slider.
@@ -51,4 +52,28 @@ function cuisineMatchScore(placeCuisines: string[], cuisineIncludes: string[]): 
   if (cuisineIncludes.length === 0) return 1;
   const overlap = placeCuisines.filter((c) => cuisineIncludes.includes(c)).length;
   return clamp01(overlap / cuisineIncludes.length);
+}
+
+// Shared by build-deck (fresh deck) and load-more (appending a page) so both write rows the
+// same shape — deckOrder is the caller's job since it depends on how many places already exist.
+export function scoredPlaceToRow(
+  sessionId: string,
+  scored: ScoredPlace,
+  deckOrder: number
+): Database["public"]["Tables"]["places"]["Insert"] {
+  return {
+    session_id: sessionId,
+    provider_place_id: scored.place.id,
+    name: scored.place.name,
+    photo_url: scored.place.photoUrl,
+    cuisines: scored.place.cuisines,
+    price_level: scored.place.priceLevel,
+    rating: scored.place.rating,
+    lat: scored.place.lat,
+    lng: scored.place.lng,
+    address: scored.place.address,
+    open_now: scored.place.openNow,
+    deck_order: deckOrder,
+    score: scored.score,
+  };
 }

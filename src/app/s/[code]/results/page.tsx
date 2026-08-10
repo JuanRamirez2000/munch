@@ -201,6 +201,18 @@ export default function ResultsPage() {
                     <span className="w-[14px] shrink-0 text-right text-[13px] text-ink-muted">
                       {entry.likeCount}
                     </span>
+                    <a
+                      href={getDirectionsUrl(entry.place)}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Get directions to ${entry.place.name}`}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-tint text-accent active:opacity-70"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="5" y1="19" x2="19" y2="5" />
+                        <polyline points="8 5 19 5 19 16" />
+                      </svg>
+                    </a>
                   </div>
                 ))}
               </div>

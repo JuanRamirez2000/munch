@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ScreenCenter, ScreenContainer } from "@/components/ScreenContainer";
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getParticipantByToken, getSessionByShortCode, listParticipants, startSession } from "@/lib/session/api";
@@ -112,9 +113,7 @@ export default function LobbyPage() {
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-6 py-5">
         {participants.map((p) => (
           <div key={p.id} className="flex items-center gap-3 rounded-card bg-surface px-4 py-3 shadow-elevation-sm">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-tint text-[14px] font-bold text-accent">
-              {p.name.charAt(0).toUpperCase()}
-            </div>
+            <Avatar name={p.name} size={36} />
             <span className="flex-1 truncate text-[14.5px] font-semibold text-ink">{p.name}</span>
             {p.isHost && (
               <span className="shrink-0 rounded-full bg-accent-tint px-2.5 py-1 text-[11px] font-bold text-accent">

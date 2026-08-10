@@ -6,7 +6,9 @@
   --color-surface-alt: #f1ede6;
   --color-ink: #292521;
   --color-ink-muted: #5b564d;
-  --color-ink-faint: #8a8578;
+  /* Darkened from the handoff's #8a8578 (~3.3:1 on bg/surface) to meet WCAG AA 4.5:1 for
+     body-sized text — this token is used for real copy (helper text, captions), not just decoration. */
+  --color-ink-faint: #6b665a;
   --color-accent: #c1602a;
   --color-accent-hover: #8a421a;
   --color-accent-tint: #fbeee4;

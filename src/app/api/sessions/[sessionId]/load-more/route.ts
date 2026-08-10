@@ -52,12 +52,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
   let radiusMiles = filters.radiusMiles;
   const firstPage = await provider.searchNearby(
     origin,
-    {
-      cuisineIncludes: filters.cuisineIncludes,
-      cuisineExcludes: filters.cuisineExcludes,
-      maxPriceLevel: filters.price,
-      radiusMeters: milesToMeters(radiusMiles),
-    },
+    { maxPriceLevel: filters.price, radiusMeters: milesToMeters(radiusMiles) },
     { limit: session.deck_size, offset: startOrder }
   );
   const fetched: Place[] = firstPage.filter((p) => !alreadyCached.has(p.id));
@@ -68,12 +63,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
       radiusMiles = widerRadiusMiles;
       const wider = await provider.searchNearby(
         origin,
-        {
-          cuisineIncludes: filters.cuisineIncludes,
-          cuisineExcludes: filters.cuisineExcludes,
-          maxPriceLevel: filters.price,
-          radiusMeters: milesToMeters(radiusMiles),
-        },
+        { maxPriceLevel: filters.price, radiusMeters: milesToMeters(radiusMiles) },
         { limit: session.deck_size, offset: 0 }
       );
       const seen = new Set([...alreadyCached, ...fetched.map((p) => p.id)]);

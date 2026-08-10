@@ -25,6 +25,31 @@ const YELP_ALIAS_TO_CUISINE: Record<string, string> = Object.fromEntries(
   Object.entries(CUISINE_TO_YELP_ALIAS).map(([cuisine, alias]) => [alias, cuisine])
 );
 
+// Best-effort bucketing of Yelp's category aliases into our dining-style vocabulary — unverified
+// against live data since Yelp isn't the active provider (see index.ts). Categories not listed
+// fall through to "Sit-down" in toDiningStyles() below, same reasoning as the Google adapter.
+const YELP_ALIAS_TO_STYLE: Record<string, string> = {
+  hotdogs: "Fast Food",
+  foodstands: "Fast Food",
+  foodtrucks: "Fast Food",
+  cafes: "Cafe",
+  coffee: "Cafe",
+  coffeeroasteries: "Cafe",
+  bars: "Bar",
+  pubs: "Bar",
+  gastropubs: "Bar",
+  breweries: "Bar",
+  cocktailbars: "Bar",
+  sportsbars: "Bar",
+  wine_bars: "Bar",
+  bakeries: "Bakery",
+  desserts: "Bakery",
+  icecream: "Bakery",
+  donuts: "Bakery",
+  fine_dining: "Fine Dining",
+  steak: "Fine Dining",
+};
+
 interface YelpCategory {
   alias: string;
   title: string;
@@ -53,13 +78,20 @@ function toCuisines(categories: YelpCategory[]): string[] {
   return Array.from(new Set([...canonical, ...titles]));
 }
 
-function toPriceLevel(price: string | undefined): number | null {
-  return price ? price.length - 1 : null;
+function toDiningStyles(categories: YelpCategory[]): string[] {
+  const buckets = new Set<string>();
+  for (const c of categories) {
+    const bucket = YELP_ALIAS_TO_STYLE[c.alias];
+    if (bucket) buckets.add(bucket);
+  }
+  if (buckets.size === 0 && categories.some((c) => c.alias.includes("restaurant") || c.alias === "restaurants")) {
+    buckets.add("Sit-down");
+  }
+  return Array.from(buckets);
 }
 
-function matchesExcludes(cuisines: string[], cuisineExcludes: string[]): boolean {
-  if (cuisineExcludes.length === 0) return true;
-  return !cuisines.some((c) => cuisineExcludes.includes(c));
+function toPriceLevel(price: string | undefined): number | null {
+  return price ? price.length - 1 : null;
 }
 
 export class YelpPlacesProvider implements PlacesProvider {
@@ -79,14 +111,10 @@ export class YelpPlacesProvider implements PlacesProvider {
       url.searchParams.set("offset", String(options.offset));
     }
     url.searchParams.set("sort_by", "best_match");
-
-    const includeAliases = filters.cuisineIncludes
-      .map((c) => CUISINE_TO_YELP_ALIAS[c])
-      .filter((alias): alias is string => Boolean(alias));
-    // Yelp has no "exclude category" query param — excludes are applied client-side below.
-    // Falls back to Yelp's broad "restaurants" category so an unfiltered search doesn't pull
-    // in salons, retail, etc.
-    url.searchParams.set("categories", includeAliases.length > 0 ? includeAliases.join(",") : "restaurants");
+    // Cuisine/dining-style are soft ranking signals now (see PlaceSearchFilters), not a
+    // fetch-time restriction — always pull Yelp's broad "restaurants" category so preference
+    // matching downstream has a full, unfiltered pool to rank against.
+    url.searchParams.set("categories", "restaurants");
 
     if (filters.maxPriceLevel !== null) {
       // Yelp's price param is "at these levels" (1-4, comma-separated), not a ceiling —
@@ -117,6 +145,7 @@ export class YelpPlacesProvider implements PlacesProvider {
           // deck build) — the swipe card's photo-cycling control just won't render for these.
           photoUrls: b.image_url ? [b.image_url] : [],
           cuisines,
+          diningStyles: toDiningStyles(b.categories),
           priceLevel: toPriceLevel(b.price),
           rating: b.rating,
           lat: b.coordinates.latitude as number,
@@ -127,7 +156,6 @@ export class YelpPlacesProvider implements PlacesProvider {
           // deck build. The "Open now" chip just won't render for Yelp-sourced cards.
           openNow: null,
         };
-      })
-      .filter((place) => matchesExcludes(place.cuisines, filters.cuisineExcludes));
+      });
   }
 }

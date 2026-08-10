@@ -24,6 +24,8 @@ function projectOffset(origin: GeoPoint, distanceMiles: number, bearingDeg: numb
   };
 }
 
+// Cuisine/dining-style are soft ranking signals now (see PlaceSearchFilters) — only price and
+// radius are hard filters here, matching the real adapters.
 function matchesFilters(place: Place, filters: PlaceSearchFilters, distanceMeters: number): boolean {
   if (distanceMeters > filters.radiusMeters) return false;
 
@@ -31,17 +33,16 @@ function matchesFilters(place: Place, filters: PlaceSearchFilters, distanceMeter
     return false;
   }
 
-  if (filters.cuisineIncludes.length > 0) {
-    const hasIncluded = place.cuisines.some((c) => filters.cuisineIncludes.includes(c));
-    if (!hasIncluded) return false;
-  }
-
-  if (filters.cuisineExcludes.length > 0) {
-    const hasExcluded = place.cuisines.some((c) => filters.cuisineExcludes.includes(c));
-    if (hasExcluded) return false;
-  }
-
   return true;
+}
+
+// The seed data has no raw type taxonomy to bucket from (unlike Google/Yelp), so this is a
+// simple heuristic rather than a real classification — good enough for local dev without a
+// live API key, which is this adapter's only purpose.
+function toDiningStyles(seed: { cuisines: string[]; priceLevel: number }): string[] {
+  if (seed.cuisines.includes("Fast Food")) return ["Fast Food"];
+  if (seed.priceLevel >= 3) return ["Fine Dining"];
+  return ["Sit-down"];
 }
 
 // Stub adapter — returns deterministic seed data projected around the query origin. Swapping
@@ -61,6 +62,7 @@ export class MockPlacesProvider implements PlacesProvider {
         name: seed.name,
         photoUrls: [],
         cuisines: seed.cuisines,
+        diningStyles: toDiningStyles(seed),
         priceLevel: seed.priceLevel,
         rating: seed.rating,
         lat,

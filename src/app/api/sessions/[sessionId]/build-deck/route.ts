@@ -39,12 +39,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
 
   const places = await getPlacesProvider().searchNearby(
     origin,
-    {
-      cuisineIncludes: filters.cuisineIncludes,
-      cuisineExcludes: filters.cuisineExcludes,
-      maxPriceLevel: filters.price,
-      radiusMeters,
-    },
+    { maxPriceLevel: filters.price, radiusMeters },
     { limit: session.deck_size }
   );
 

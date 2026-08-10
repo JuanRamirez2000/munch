@@ -1,6 +1,6 @@
-import type { CuisineState } from "@/lib/session/types";
+import type { PreferenceState } from "@/lib/session/types";
 
-const STATE_CLASSES: Record<CuisineState, string> = {
+const STATE_CLASSES: Record<PreferenceState, string> = {
   none: "bg-surface-alt text-ink-muted border border-transparent font-medium",
   include: "bg-accent-tint text-accent border border-accent font-semibold",
   exclude: "bg-pass-tint text-pass border border-pass font-semibold line-through",
@@ -8,7 +8,7 @@ const STATE_CLASSES: Record<CuisineState, string> = {
 
 interface ChipProps {
   label: string;
-  state: CuisineState;
+  state: PreferenceState;
   onClick: () => void;
 }
 

@@ -9,6 +9,7 @@ import { getLikeCounts, getLikersByPlace, getTotalVoteCount, listDeckPlaces } fr
 import type { Liker } from "@/lib/deck/api";
 import type { DeckPlace } from "@/lib/deck/types";
 import { getDirectionsUrl } from "@/lib/directions";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getParticipantByToken, getSessionByShortCode, listParticipants } from "@/lib/session/api";
 import { getParticipantToken } from "@/lib/session/storage";
 import type { Session } from "@/lib/session/types";
@@ -82,6 +83,34 @@ export default function ResultsPage() {
       cancelled = true;
     };
   }, [code, router]);
+
+  // Live leaderboard — swiping keeps going after someone reaches Results, so counts/likers
+  // here would otherwise go stale until the viewer manually re-navigates. Mirrors the
+  // full-refetch-on-event pattern already used for the lobby roster.
+  useEffect(() => {
+    if (!session) return;
+    const supabase = getSupabaseBrowserClient();
+    const channel = supabase
+      .channel(`results:${session.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "votes", filter: `session_id=eq.${session.id}` },
+        () => {
+          Promise.all([getLikeCounts(session.id), getLikersByPlace(session.id), getTotalVoteCount(session.id)]).then(
+            ([counts, likers, votes]) => {
+              setLikeCounts(counts);
+              setLikersByPlace(likers);
+              setTotalVotes(votes);
+            }
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session]);
 
   const leaderboard = useMemo<LeaderboardEntry[]>(() => {
     return places

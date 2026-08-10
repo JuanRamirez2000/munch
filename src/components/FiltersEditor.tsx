@@ -3,18 +3,24 @@ import { PriceControl } from "@/components/ui/PriceControl";
 import { RangeSlider } from "@/components/ui/RangeSlider";
 import { sliderToMiles, sliderToMinutes } from "@/lib/session/distance";
 import { CUISINE_CYCLE, type FiltersEditorValue } from "@/lib/session/filters-editor";
-import { CUISINE_OPTIONS } from "@/lib/session/types";
+import { CUISINE_OPTIONS, DINING_STYLE_OPTIONS } from "@/lib/session/types";
 
 interface FiltersEditorProps {
   value: FiltersEditorValue;
   onChange: (value: FiltersEditorValue) => void;
 }
 
-// Cuisines / price / distance / weights controls, shared by Create Session and the lobby's
-// "Edit settings" section so the two never drift out of sync.
+// Cuisines / dining style / price / distance / weights controls, shared by Create Session and
+// the lobby's "Edit settings" section so the two never drift out of sync.
 export function FiltersEditor({ value, onChange }: FiltersEditorProps) {
   function cycleCuisine(name: string) {
     onChange({ ...value, cuisines: { ...value.cuisines, [name]: CUISINE_CYCLE[value.cuisines[name]] } });
+  }
+
+  // Dining-style has no exclude state (see DINING_STYLE_OPTIONS) — just toggle include/none.
+  function toggleStyle(name: string) {
+    const next = value.styles[name] === "include" ? "none" : "include";
+    onChange({ ...value, styles: { ...value.styles, [name]: next } });
   }
 
   const miles = sliderToMiles(value.distance);
@@ -29,7 +35,19 @@ export function FiltersEditor({ value, onChange }: FiltersEditorProps) {
             <Chip key={cuisine} label={cuisine} state={value.cuisines[cuisine]} onClick={() => cycleCuisine(cuisine)} />
           ))}
         </div>
-        <div className="text-[11.5px] text-ink-faint">Tap to include, tap again to exclude</div>
+        <div className="text-[11.5px] text-ink-faint">
+          Tap to include, tap again to exclude — this is a preference, not a hard filter
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2.5">
+        <div className="text-[13px] font-bold uppercase tracking-[0.04em] text-ink-muted">Dining style</div>
+        <div className="flex flex-wrap gap-2">
+          {DINING_STYLE_OPTIONS.map((style) => (
+            <Chip key={style} label={style} state={value.styles[style]} onClick={() => toggleStyle(style)} />
+          ))}
+        </div>
+        <div className="text-[11.5px] text-ink-faint">Select as many as fit the group&apos;s mood</div>
       </div>
 
       <div className="flex flex-col gap-2.5">
@@ -60,10 +78,10 @@ export function FiltersEditor({ value, onChange }: FiltersEditorProps) {
           </div>
         </div>
         <div className="flex flex-col gap-1.5">
-          <div className="text-[14px] font-semibold text-ink">Cuisine-match importance</div>
+          <div className="text-[14px] font-semibold text-ink">Preference match importance</div>
           <RangeSlider
-            value={value.cuisineImportance}
-            onChange={(cuisineImportance) => onChange({ ...value, cuisineImportance })}
+            value={value.preferenceImportance}
+            onChange={(preferenceImportance) => onChange({ ...value, preferenceImportance })}
           />
           <div className="flex justify-between text-[11px] text-ink-faint">
             <span>Low</span>

@@ -49,6 +49,55 @@ const GENERIC_TYPES = new Set([
   "meal_delivery",
 ]);
 
+// Buckets Google's ~140 food/drink Table A types into our fixed 6-option dining-style
+// vocabulary — a second, independent preference axis from cuisine (a place can be both "Sushi"
+// and "Fast Food"-style). Anything not listed here falls through to the "Sit-down" default in
+// toDiningStyles() below, since Google has no positive type for dine-in/table-service dining.
+const GOOGLE_TYPE_TO_STYLE: Record<string, string> = {
+  fast_food_restaurant: "Fast Food",
+  meal_takeaway: "Fast Food",
+  meal_delivery: "Fast Food",
+  food_court: "Fast Food",
+  hot_dog_stand: "Fast Food",
+  pizza_delivery: "Fast Food",
+  snack_bar: "Fast Food",
+  cafe: "Cafe",
+  coffee_shop: "Cafe",
+  coffee_stand: "Cafe",
+  coffee_roastery: "Cafe",
+  tea_house: "Cafe",
+  cat_cafe: "Cafe",
+  dog_cafe: "Cafe",
+  bar: "Bar",
+  bar_and_grill: "Bar",
+  cocktail_bar: "Bar",
+  sports_bar: "Bar",
+  wine_bar: "Bar",
+  pub: "Bar",
+  gastropub: "Bar",
+  irish_pub: "Bar",
+  brewery: "Bar",
+  brewpub: "Bar",
+  beer_garden: "Bar",
+  hookah_bar: "Bar",
+  lounge_bar: "Bar",
+  bakery: "Bakery",
+  cake_shop: "Bakery",
+  pastry_shop: "Bakery",
+  donut_shop: "Bakery",
+  ice_cream_shop: "Bakery",
+  dessert_shop: "Bakery",
+  dessert_restaurant: "Bakery",
+  candy_store: "Bakery",
+  chocolate_shop: "Bakery",
+  chocolate_factory: "Bakery",
+  confectionery: "Bakery",
+  acai_shop: "Bakery",
+  juice_shop: "Bakery",
+  fine_dining_restaurant: "Fine Dining",
+  steak_house: "Fine Dining",
+};
+
 const PRICE_LEVEL_MAP: Record<string, number> = {
   PRICE_LEVEL_FREE: 0,
   PRICE_LEVEL_INEXPENSIVE: 0,
@@ -88,6 +137,21 @@ function toCuisines(types: string[] | undefined): string[] {
   return Array.from(new Set([...canonical, ...humanized]));
 }
 
+function toDiningStyles(types: string[] | undefined): string[] {
+  const list = types ?? [];
+  const buckets = new Set<string>();
+  for (const t of list) {
+    const bucket = GOOGLE_TYPE_TO_STYLE[t];
+    if (bucket) buckets.add(bucket);
+  }
+  // Residual default: something that's a restaurant (primary or secondary type) but didn't
+  // match any of the faster/casual buckets above reads as traditional sit-down dining.
+  if (buckets.size === 0 && (list.includes("restaurant") || list.some((t) => t.endsWith("_restaurant")))) {
+    buckets.add("Sit-down");
+  }
+  return Array.from(buckets);
+}
+
 // Capped well under Google's per-place photo count to keep the swipe card's cycling dots
 // (and the deck-build request) reasonably sized — a place rarely has more than a couple of
 // photos worth showing anyway.
@@ -115,21 +179,12 @@ export class GooglePlacesProvider implements PlacesProvider {
     filters: PlaceSearchFilters,
     options: SearchNearbyOptions
   ): Promise<Place[]> {
-    const includedTypes = filters.cuisineIncludes
-      .map((c) => CUISINE_TO_GOOGLE_TYPE[c])
-      .filter((t): t is string => Boolean(t));
-    const excludedTypes = filters.cuisineExcludes
-      .map((c) => CUISINE_TO_GOOGLE_TYPE[c])
-      .filter((t): t is string => Boolean(t));
-
-    // includedTypes matches ANY of a place's types — right for a specific cuisine ask (a place
-    // primarily Japanese that also carries "sushi_restaurant" is a reasonable match). But as
-    // the no-filter-set default it's too loose: places like a hotel with an on-site restaurant
-    // carry "restaurant" as a secondary type and would show up as a swipeable "restaurant".
-    // includedPrimaryTypes only matches a place's main type, so it's used for that default case.
+    // Cuisine/dining-style no longer narrow this request — they're soft ranking signals applied
+    // afterward in scorePlaces(), not a fetch-time restriction (see PlaceSearchFilters). Always
+    // fetch broadly by primary type only: includedTypes (any-of-a-place's-types) would let in
+    // places like a hotel whose on-site restaurant is a secondary type, not its main identity.
     const body = {
-      ...(includedTypes.length > 0 ? { includedTypes } : { includedPrimaryTypes: ["restaurant"] }),
-      ...(excludedTypes.length > 0 ? { excludedTypes } : {}),
+      includedPrimaryTypes: ["restaurant"],
       maxResultCount: Math.min(GOOGLE_MAX_RESULT_COUNT, options.limit),
       locationRestriction: {
         circle: {
@@ -164,6 +219,7 @@ export class GooglePlacesProvider implements PlacesProvider {
           name: p.displayName?.text ?? "Unnamed",
           photoUrls: toPhotoUrls(p.photos),
           cuisines: toCuisines(p.types),
+          diningStyles: toDiningStyles(p.types),
           priceLevel,
           rating: p.rating ?? null,
           lat: p.location!.latitude,

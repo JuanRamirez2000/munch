@@ -13,8 +13,8 @@ export interface ScoredPlace {
   score: number;
 }
 
-// Weighted average of three 0-1 signals (rating, distance, cuisine match), normalized by the
-// sum of weights so the result always lands in [0, 1] regardless of where the sliders sit.
+// Weighted average of three 0-1 signals (rating, distance, preference match), normalized by
+// the sum of weights so the result always lands in [0, 1] regardless of where the sliders sit.
 export function scorePlaces(
   places: Place[],
   origin: GeoPoint,
@@ -23,18 +23,18 @@ export function scorePlaces(
   radiusMeters: number
 ): ScoredPlace[] {
   const distanceWeight = weights.distanceImportance / 100;
-  const cuisineWeight = weights.cuisineImportance / 100;
-  const totalWeight = RATING_WEIGHT + distanceWeight + cuisineWeight;
+  const preferenceWeight = weights.preferenceImportance / 100;
+  const totalWeight = RATING_WEIGHT + distanceWeight + preferenceWeight;
 
   return places.map((place) => {
     const distanceMeters = haversineDistanceMeters(origin, { lat: place.lat, lng: place.lng });
 
     const ratingNorm = place.rating !== null ? place.rating / 5 : 0.5;
     const distanceNorm = clamp01(1 - distanceMeters / radiusMeters);
-    const cuisineNorm = cuisineMatchScore(place.cuisines, filters.cuisineIncludes);
+    const preferenceNorm = preferenceMatchScore(place, filters);
 
     const score =
-      (RATING_WEIGHT * ratingNorm + distanceWeight * distanceNorm + cuisineWeight * cuisineNorm) /
+      (RATING_WEIGHT * ratingNorm + distanceWeight * distanceNorm + preferenceWeight * preferenceNorm) /
       totalWeight;
 
     return { place, distanceMeters, score };
@@ -45,13 +45,30 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-// Places are already hard-filtered to have at least one included cuisine (or no filter was
-// set) — this just scores *how much* of the requested list a place covers, so e.g. a place
-// tagged both "Chinese" and "Dumplings" outranks one that only matches one requested cuisine.
-function cuisineMatchScore(placeCuisines: string[], cuisineIncludes: string[]): number {
-  if (cuisineIncludes.length === 0) return 1;
-  const overlap = placeCuisines.filter((c) => cuisineIncludes.includes(c)).length;
-  return clamp01(overlap / cuisineIncludes.length);
+// Cuisine and dining-style are both soft "this is the vibe" signals now, not fetch-time filters
+// (see PlaceSearchFilters) — a place that doesn't match still shows up, just ranked lower.
+// Blends whichever of the three preference dimensions the host actually set (cuisine include,
+// cuisine exclude, dining-style include) by averaging their individual 0-1 scores; a dimension
+// nobody touched doesn't drag the average down. No preferences set at all -> neutral (1), same
+// as the old cuisine-only behavior, so an untouched session doesn't penalize every place.
+function preferenceMatchScore(place: Place, filters: SessionFilters): number {
+  const dimensionScores: number[] = [];
+
+  if (filters.cuisineIncludes.length > 0) {
+    const overlap = place.cuisines.filter((c) => filters.cuisineIncludes.includes(c)).length;
+    dimensionScores.push(clamp01(overlap / filters.cuisineIncludes.length));
+  }
+  if (filters.cuisineExcludes.length > 0) {
+    const hasExcluded = place.cuisines.some((c) => filters.cuisineExcludes.includes(c));
+    dimensionScores.push(hasExcluded ? 0 : 1);
+  }
+  if (filters.styleIncludes.length > 0) {
+    const overlap = place.diningStyles.filter((s) => filters.styleIncludes.includes(s)).length;
+    dimensionScores.push(clamp01(overlap / filters.styleIncludes.length));
+  }
+
+  if (dimensionScores.length === 0) return 1;
+  return dimensionScores.reduce((sum, s) => sum + s, 0) / dimensionScores.length;
 }
 
 // Chains often have several nearby locations that a provider returns as distinct place IDs —

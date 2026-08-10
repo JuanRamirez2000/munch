@@ -1,3 +1,4 @@
+import { GooglePlacesProvider } from "./adapters/google";
 import { MockPlacesProvider } from "./adapters/mock";
 import { YelpPlacesProvider } from "./adapters/yelp";
 import type { PlacesProvider } from "./types";
@@ -13,7 +14,11 @@ const PROVIDER_FACTORIES: Record<string, () => PlacesProvider> = {
     if (!apiKey) throw new Error("YELP_API_KEY is not set");
     return new YelpPlacesProvider(apiKey);
   },
-  // google: () => new GooglePlacesProvider(),
+  google: () => {
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+    if (!apiKey) throw new Error("GOOGLE_PLACES_API_KEY is not set");
+    return new GooglePlacesProvider(apiKey);
+  },
   // foursquare: () => new FoursquarePlacesProvider(),
 };
 

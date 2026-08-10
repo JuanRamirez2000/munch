@@ -32,6 +32,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the production file, which only ever holds NEXT_PUBLIC_ values (safe to expose
+# in the client bundle by design) plus the provider selector — committed so Vercel's
+# git-based build picks it up with no manual dashboard step.
+!.env.production
 
 # vercel
 .vercel

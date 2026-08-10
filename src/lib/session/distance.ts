@@ -7,3 +7,10 @@ export function sliderToMiles(value: number): number {
 export function sliderToMinutes(value: number): number {
   return Math.max(5, Math.round((value / 100) * 60));
 }
+
+// Approximate inverse of sliderToMiles, for re-opening the editor against a stored radius —
+// rounding means this won't always land on the exact original slider position, which is fine
+// since the display (miles/minutes) is what matters, not pixel-perfect slider recall.
+export function milesToSlider(miles: number): number {
+  return Math.max(0, Math.min(100, Math.round((miles / 25) * 100)));
+}

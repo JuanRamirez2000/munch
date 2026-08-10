@@ -2,12 +2,24 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { FiltersEditor } from "@/components/FiltersEditor";
 import { ScreenCenter, ScreenContainer } from "@/components/ScreenContainer";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { getParticipantByToken, getSessionByShortCode, listParticipants, startSession } from "@/lib/session/api";
+import {
+  getParticipantByToken,
+  getSessionByShortCode,
+  listParticipants,
+  startSession,
+  updateSessionFilters,
+} from "@/lib/session/api";
 import { getParticipantToken } from "@/lib/session/storage";
+import {
+  editorValueToFiltersAndWeights,
+  filtersAndWeightsToEditorValue,
+  type FiltersEditorValue,
+} from "@/lib/session/filters-editor";
 import type { Participant, Session } from "@/lib/session/types";
 
 export default function LobbyPage() {
@@ -20,6 +32,11 @@ export default function LobbyPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+
+  const [editingSettings, setEditingSettings] = useState(false);
+  const [editorValue, setEditorValue] = useState<FiltersEditorValue | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,6 +64,7 @@ export default function LobbyPage() {
 
       setSession(found);
       setSelf(participant);
+      setEditorValue(filtersAndWeightsToEditorValue(found.filters, found.weights));
       setParticipants(await listParticipants(found.id));
       setLoading(false);
     }
@@ -97,8 +115,35 @@ export default function LobbyPage() {
     }
   }
 
-  if (loading || !session || !self) {
-    return <ScreenCenter><span className="text-ink-muted">Loading…</span></ScreenCenter>;
+  async function handleSaveSettings() {
+    if (!session || !editorValue) return;
+    setSavingSettings(true);
+    setSettingsMessage(null);
+    try {
+      const { filters, weights } = editorValueToFiltersAndWeights(editorValue);
+      await updateSessionFilters(session.id, filters, weights);
+      const response = await fetch(`/api/sessions/${session.id}/build-deck`, { method: "POST" });
+      const body = await response.json();
+      if (!response.ok) {
+        setSettingsMessage("Saved, but couldn't reload places. Try again.");
+        return;
+      }
+      setSession({ ...session, filters, weights });
+      setSettingsMessage(`Reloaded — ${body.count} places match now.`);
+      setEditingSettings(false);
+    } catch {
+      setSettingsMessage("Couldn't save settings. Try again.");
+    } finally {
+      setSavingSettings(false);
+    }
+  }
+
+  if (loading || !session || !self || !editorValue) {
+    return (
+      <ScreenCenter>
+        <span className="text-ink-muted">Loading…</span>
+      </ScreenCenter>
+    );
   }
 
   return (
@@ -122,6 +167,33 @@ export default function LobbyPage() {
             )}
           </div>
         ))}
+
+        {self.isHost && (
+          <div className="mt-3 flex flex-col gap-3.5 rounded-card bg-surface p-4 shadow-elevation-sm">
+            <button
+              type="button"
+              onClick={() => {
+                setSettingsMessage(null);
+                setEditingSettings((v) => !v);
+              }}
+              className="flex items-center justify-between text-left"
+            >
+              <span className="text-[14.5px] font-semibold text-ink">Session settings</span>
+              <span className="text-[13px] font-semibold text-accent">{editingSettings ? "Close" : "Edit"}</span>
+            </button>
+
+            {editingSettings && (
+              <>
+                <FiltersEditor value={editorValue} onChange={setEditorValue} />
+                <Button onClick={handleSaveSettings} disabled={savingSettings}>
+                  {savingSettings ? "Reloading places…" : "Save & reload places"}
+                </Button>
+              </>
+            )}
+
+            {settingsMessage && <div className="text-[12.5px] font-medium text-ink-muted">{settingsMessage}</div>}
+          </div>
+        )}
       </div>
 
       <div className="px-6 pb-[calc(env(safe-area-inset-bottom)+14px)] pt-3.5">

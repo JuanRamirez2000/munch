@@ -144,6 +144,23 @@ export async function listParticipants(sessionId: string): Promise<Participant[]
   return data.map(rowToParticipant);
 }
 
+export async function updateSessionFilters(
+  sessionId: string,
+  filters: SessionFilters,
+  weights: SessionWeights
+): Promise<void> {
+  const supabase = getSupabaseBrowserClient();
+  const { error } = await supabase
+    .from("sessions")
+    .update({
+      filters: filters as unknown as Database["public"]["Tables"]["sessions"]["Update"]["filters"],
+      weights: weights as unknown as Database["public"]["Tables"]["sessions"]["Update"]["weights"],
+    })
+    .eq("id", sessionId);
+
+  if (error) throw error;
+}
+
 export async function startSession(sessionId: string): Promise<void> {
   const supabase = getSupabaseBrowserClient();
   const { error } = await supabase

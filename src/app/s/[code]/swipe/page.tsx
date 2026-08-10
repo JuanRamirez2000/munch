@@ -221,8 +221,8 @@ export default function SwipePage() {
           onClick={() => router.push(`/s/${code}/results`)}
           className={
             topPlace
-              ? "inline-flex items-center gap-1.5 rounded-full bg-accent-tint px-3.5 py-1.5 text-[12.5px] font-semibold text-accent"
-              : "inline-flex items-center gap-1.5 rounded-full bg-surface-alt px-3.5 py-1.5 text-[12.5px] font-semibold text-ink-muted"
+              ? "inline-flex items-center gap-2 rounded-full bg-accent-tint px-4 py-2.5 text-[13.5px] font-bold text-accent shadow-elevation-sm active:opacity-80"
+              : "inline-flex items-center gap-2 rounded-full bg-surface-alt px-4 py-2.5 text-[13.5px] font-bold text-ink-muted shadow-elevation-sm active:opacity-80"
           }
         >
           {topPlace ? (
@@ -232,6 +232,7 @@ export default function SwipePage() {
           ) : (
             "See leaderboard"
           )}
+          <span className="text-[15px] leading-none opacity-60">›</span>
         </button>
       </div>
 

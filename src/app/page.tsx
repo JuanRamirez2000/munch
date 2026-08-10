@@ -2,15 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { FiltersEditor } from "@/components/FiltersEditor";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { Button } from "@/components/ui/Button";
-import { Chip } from "@/components/ui/Chip";
-import { PriceControl } from "@/components/ui/PriceControl";
-import { RangeSlider } from "@/components/ui/RangeSlider";
 import { createSession } from "@/lib/session/api";
-import { sliderToMiles, sliderToMinutes } from "@/lib/session/distance";
+import { defaultFiltersEditorValue, editorValueToFiltersAndWeights } from "@/lib/session/filters-editor";
 import { setHostToken } from "@/lib/session/storage";
-import { CUISINE_OPTIONS, type CuisineState } from "@/lib/session/types";
 
 type LocationState =
   | { mode: "none" }
@@ -18,24 +15,12 @@ type LocationState =
   | { mode: "resolved"; lat: number; lng: number; label: string }
   | { mode: "error"; message: string };
 
-const CUISINE_CYCLE: Record<CuisineState, CuisineState> = {
-  none: "include",
-  include: "exclude",
-  exclude: "none",
-};
-
 export default function CreateSessionPage() {
   const router = useRouter();
   const [location, setLocation] = useState<LocationState>({ mode: "none" });
   const [addressMode, setAddressMode] = useState(false);
   const [addressQuery, setAddressQuery] = useState("");
-  const [cuisines, setCuisines] = useState<Record<string, CuisineState>>(() =>
-    Object.fromEntries(CUISINE_OPTIONS.map((c) => [c, "none" as CuisineState]))
-  );
-  const [price, setPrice] = useState(1);
-  const [distance, setDistance] = useState(45);
-  const [distImportance, setDistImportance] = useState(65);
-  const [cuisineImportance, setCuisineImportance] = useState(50);
+  const [editorValue, setEditorValue] = useState(defaultFiltersEditorValue);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -81,29 +66,17 @@ export default function CreateSessionPage() {
     }
   }
 
-  function cycleCuisine(name: string) {
-    setCuisines((prev) => ({ ...prev, [name]: CUISINE_CYCLE[prev[name]] }));
-  }
-
   async function handleCreate() {
     if (location.mode !== "resolved") return;
     setSubmitting(true);
     setSubmitError(null);
     try {
+      const { filters, weights } = editorValueToFiltersAndWeights(editorValue);
       const { session, hostToken } = await createSession({
         originLat: location.lat,
         originLng: location.lng,
-        filters: {
-          cuisineIncludes: Object.entries(cuisines)
-            .filter(([, v]) => v === "include")
-            .map(([k]) => k),
-          cuisineExcludes: Object.entries(cuisines)
-            .filter(([, v]) => v === "exclude")
-            .map(([k]) => k),
-          price,
-          radiusMiles: sliderToMiles(distance),
-        },
-        weights: { distanceImportance: distImportance, cuisineImportance },
+        filters,
+        weights,
       });
       setHostToken(session.shortCode, hostToken);
       try {
@@ -118,9 +91,6 @@ export default function CreateSessionPage() {
       setSubmitting(false);
     }
   }
-
-  const miles = sliderToMiles(distance);
-  const minutes = sliderToMinutes(distance);
 
   return (
     <ScreenContainer>
@@ -162,52 +132,7 @@ export default function CreateSessionPage() {
           )}
         </div>
 
-        <div className="flex flex-col gap-2.5">
-          <div className="text-[13px] font-bold uppercase tracking-[0.04em] text-ink-muted">Cuisines</div>
-          <div className="flex flex-wrap gap-2">
-            {CUISINE_OPTIONS.map((cuisine) => (
-              <Chip key={cuisine} label={cuisine} state={cuisines[cuisine]} onClick={() => cycleCuisine(cuisine)} />
-            ))}
-          </div>
-          <div className="text-[11.5px] text-ink-faint">Tap to include, tap again to exclude</div>
-        </div>
-
-        <div className="flex flex-col gap-2.5">
-          <div className="text-[13px] font-bold uppercase tracking-[0.04em] text-ink-muted">Price</div>
-          <PriceControl value={price} onChange={setPrice} />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <div className="flex justify-between">
-            <span className="text-[13px] font-bold uppercase tracking-[0.04em] text-ink-muted">Distance</span>
-            <span className="text-[13px] font-semibold text-accent">
-              {minutes} min · {miles} mi
-            </span>
-          </div>
-          <RangeSlider value={distance} onChange={setDistance} />
-        </div>
-
-        <div className="flex flex-col gap-3.5 pb-2">
-          <div className="text-[13px] leading-snug text-ink-faint">
-            Weights nudge places that work well for the whole group toward the top of the deck.
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <div className="text-[14px] font-semibold text-ink">Distance importance</div>
-            <RangeSlider value={distImportance} onChange={setDistImportance} />
-            <div className="flex justify-between text-[11px] text-ink-faint">
-              <span>Low</span>
-              <span>High</span>
-            </div>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <div className="text-[14px] font-semibold text-ink">Cuisine-match importance</div>
-            <RangeSlider value={cuisineImportance} onChange={setCuisineImportance} />
-            <div className="flex justify-between text-[11px] text-ink-faint">
-              <span>Low</span>
-              <span>High</span>
-            </div>
-          </div>
-        </div>
+        <FiltersEditor value={editorValue} onChange={setEditorValue} />
       </div>
 
       <div className="px-6 pb-[calc(env(safe-area-inset-bottom)+14px)] pt-3.5">

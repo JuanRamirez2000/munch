@@ -5,8 +5,11 @@ import { getPlacesProvider } from "@/lib/places";
 import { createSupabaseServerClient } from "@/lib/supabase/client";
 import type { SessionFilters, SessionWeights } from "@/lib/session/types";
 
-// Runs once per session, right after creation (see the Create Session flow) — never per
-// swiper. Cached rows in `places` are what every participant actually reads from.
+// A full (re)build of the deck — called right after session creation, and again whenever the
+// host edits filters/weights in the lobby. Always safe to re-run: it only ever runs pre-Start,
+// and votes can't exist until the session is active, so clearing and re-scoring from scratch
+// can't orphan anyone's vote. (Once swiping starts, load-more takes over — it only ever
+// appends, never touches what's already cached.) Never called per-swiper.
 export async function POST(_request: NextRequest, { params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = await params;
   const supabase = createSupabaseServerClient();
@@ -22,6 +25,11 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
   }
   if (!session) {
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  }
+
+  const { error: deleteError } = await supabase.from("places").delete().eq("session_id", session.id);
+  if (deleteError) {
+    return NextResponse.json({ error: deleteError.message }, { status: 500 });
   }
 
   const filters = session.filters as unknown as SessionFilters;

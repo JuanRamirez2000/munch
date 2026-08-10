@@ -278,14 +278,23 @@ export default function SwipePage() {
             <div className="text-[19px] font-bold text-ink">You&apos;re done!</div>
             <div className="text-[14.5px] text-ink-muted">Waiting on the rest of the group…</div>
             {loadMoreMessage && <div className="text-[13px] text-ink-faint">{loadMoreMessage}</div>}
-            <button
-              type="button"
-              onClick={handleLoadMore}
-              disabled={loadingMore}
-              className="mt-2 rounded-button bg-surface-alt px-5 py-3 text-[14px] font-semibold text-ink disabled:opacity-40"
-            >
-              {loadingMore ? "Loading…" : "Load more places"}
-            </button>
+            <div className="mt-2 flex gap-3">
+              <button
+                type="button"
+                onClick={() => router.push(`/s/${code}/results`)}
+                className="rounded-button bg-accent-tint px-5 py-3 text-[14px] font-bold text-accent"
+              >
+                See leaderboard
+              </button>
+              <button
+                type="button"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="rounded-button bg-surface-alt px-5 py-3 text-[14px] font-semibold text-ink disabled:opacity-40"
+              >
+                {loadingMore ? "Loading…" : "Load more places"}
+              </button>
+            </div>
           </div>
         )}
       </div>

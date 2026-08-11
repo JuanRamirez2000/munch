@@ -54,6 +54,7 @@ export type Database = {
           address: string | null
           cuisines: string[]
           deck_order: number
+          dining_styles: string[]
           google_maps_uri: string | null
           id: string
           lat: number
@@ -72,6 +73,7 @@ export type Database = {
           address?: string | null
           cuisines?: string[]
           deck_order: number
+          dining_styles?: string[]
           google_maps_uri?: string | null
           id?: string
           lat: number
@@ -90,6 +92,7 @@ export type Database = {
           address?: string | null
           cuisines?: string[]
           deck_order?: number
+          dining_styles?: string[]
           google_maps_uri?: string | null
           id?: string
           lat?: number

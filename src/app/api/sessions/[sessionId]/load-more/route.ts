@@ -2,12 +2,47 @@ import { NextRequest, NextResponse } from "next/server";
 import { milesToMeters } from "@/lib/geo";
 import { dedupeByName, scorePlaces, scoredPlaceToRow } from "@/lib/deck/ranking";
 import { getPlacesProvider } from "@/lib/places";
-import type { Place } from "@/lib/places";
+import type { Place, PlaceSearchFilters, SearchNearbyOptions } from "@/lib/places";
 import { createSupabaseServerClient } from "@/lib/supabase/client";
 import type { SessionFilters, SessionWeights } from "@/lib/session/types";
 
 const MAX_RADIUS_MILES = 50;
 const RADIUS_EXPANSION_FACTOR = 1.5;
+
+type SupabaseServerClient = ReturnType<typeof createSupabaseServerClient>;
+
+// The single most-liked cuisine and single most-liked dining-style in the session so far (not
+// a blend of several — a multi-theme text query is mushier and Text Search handles one clear
+// theme better). Null when nobody's liked anything yet, e.g. the very first load-more call.
+async function getDominantLikedSignal(
+  supabase: SupabaseServerClient,
+  sessionId: string
+): Promise<{ cuisine: string | null; style: string | null }> {
+  const { data } = await supabase
+    .from("votes")
+    .select("place:places(cuisines, dining_styles)")
+    .eq("session_id", sessionId)
+    .eq("liked", true)
+    .returns<{ place: { cuisines: string[]; dining_styles: string[] } | null }[]>();
+
+  const cuisineCounts = new Map<string, number>();
+  const styleCounts = new Map<string, number>();
+  for (const row of data ?? []) {
+    for (const c of row.place?.cuisines ?? []) cuisineCounts.set(c, (cuisineCounts.get(c) ?? 0) + 1);
+    for (const s of row.place?.dining_styles ?? []) {
+      // "Sit-down" is our own residual bucket (see toDiningStyles()) for "didn't match a more
+      // specific style" — not a real term restaurants describe themselves with. Verified live:
+      // including it in a Text Search query actively drags in irrelevant, far-away results
+      // instead of just being ignored.
+      if (s === "Sit-down") continue;
+      styleCounts.set(s, (styleCounts.get(s) ?? 0) + 1);
+    }
+  }
+  const top = (counts: Map<string, number>) =>
+    Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+
+  return { cuisine: top(cuisineCounts), style: top(styleCounts) };
+}
 
 // "Load more" / "Extend search" — appends another page to the END of the existing deck
 // (never reorders already-cached cards). Pages at the current radius first; if the provider
@@ -47,25 +82,34 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
   const provider = getPlacesProvider();
   const startOrder = alreadyCached.size;
 
+  // Steer toward what the group has actually liked so far, not just their declared chip
+  // preferences — a group that's liked several Vietnamese Fast Food spots gets more of that on
+  // the next page, not just a wider radius of anything. Falls back to the plain broad search
+  // (today's behavior) when nobody's liked anything yet, or the provider has no query search.
+  const { cuisine: topCuisine, style: topStyle } = await getDominantLikedSignal(supabase, sessionId);
+  const likedQuery = [topCuisine, topStyle].filter(Boolean).join(" ");
+  const searchByQuery = provider.searchByQuery?.bind(provider);
+  const useLikedSignal = likedQuery.length > 0 && searchByQuery !== undefined;
+
+  function search(radiusMiles: number, options: SearchNearbyOptions): Promise<Place[]> {
+    const searchFilters: PlaceSearchFilters = { maxPriceLevel: filters.price, radiusMeters: milesToMeters(radiusMiles) };
+    if (useLikedSignal && searchByQuery) {
+      return searchByQuery(`${likedQuery} restaurants`, origin, searchFilters, options);
+    }
+    return provider.searchNearby(origin, searchFilters, options);
+  }
+
   // Filtered against alreadyCached explicitly rather than trusting offset-based pagination
   // alone to skip exactly what's cached — safer if a provider's ordering isn't perfectly stable.
   let radiusMiles = filters.radiusMiles;
-  const firstPage = await provider.searchNearby(
-    origin,
-    { maxPriceLevel: filters.price, radiusMeters: milesToMeters(radiusMiles) },
-    { limit: session.deck_size, offset: startOrder }
-  );
+  const firstPage = await search(radiusMiles, { limit: session.deck_size, offset: startOrder });
   const fetched: Place[] = firstPage.filter((p) => !alreadyCached.has(p.id));
 
   if (fetched.length < session.deck_size) {
     const widerRadiusMiles = Math.min(MAX_RADIUS_MILES, Math.round(radiusMiles * RADIUS_EXPANSION_FACTOR));
     if (widerRadiusMiles > radiusMiles) {
       radiusMiles = widerRadiusMiles;
-      const wider = await provider.searchNearby(
-        origin,
-        { maxPriceLevel: filters.price, radiusMeters: milesToMeters(radiusMiles) },
-        { limit: session.deck_size, offset: 0 }
-      );
+      const wider = await search(radiusMiles, { limit: session.deck_size, offset: 0 });
       const seen = new Set([...alreadyCached, ...fetched.map((p) => p.id)]);
       for (const place of wider) {
         if (fetched.length >= session.deck_size) break;

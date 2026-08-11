@@ -6,20 +6,39 @@ const YELP_API_BASE = "https://api.yelp.com/v3";
 // will just plateau here rather than error once a session's search area hits the cap.
 const YELP_MAX_RADIUS_METERS = 40_000;
 
-// Bridges our fixed 6-chip cuisine vocabulary (Create Session's UI) to Yelp's much larger,
+// Bridges our cuisine vocabulary (session/types.ts's CUISINE_OPTIONS) to Yelp's much larger,
 // differently-worded category taxonomy (e.g. Yelp titles BBQ "Barbeque"). Query-building uses
 // the alias side; response normalization uses the reverse map so cuisineIncludes/Excludes
-// (which compare against our vocabulary) keep working regardless of provider.
+// (which compare against our vocabulary) keep working regardless of provider. Aliases beyond
+// the original 7 are unverified against live data since Yelp isn't the active provider.
 const CUISINE_TO_YELP_ALIAS: Record<string, string> = {
+  Mexican: "mexican",
+  Italian: "italian",
+  Chinese: "chinese",
+  Japanese: "japanese",
   Sushi: "sushi",
-  Pizza: "pizza",
   Thai: "thai",
+  // Yelp's taxonomy bundles Indian and Pakistani into one category.
+  Indian: "indpak",
+  Korean: "korean",
+  Vietnamese: "vietnamese",
+  Mediterranean: "mediterranean",
+  Greek: "greek",
+  French: "french",
+  // Yelp splits American into "Traditional" and "New American" — this is the closer generic
+  // match to Google's single american_restaurant type.
+  American: "tradamerican",
   BBQ: "bbq",
+  Seafood: "seafood",
+  Steakhouse: "steak",
+  Pizza: "pizza",
   Vegan: "vegan",
   Burgers: "burgers",
   // Yelp's taxonomy names this category "hotdogs" for historical reasons; the display title
   // is "Fast Food", which is what actually reaches users.
   "Fast Food": "hotdogs",
+  "Middle Eastern": "mideastern",
+  Filipino: "filipino",
 };
 const YELP_ALIAS_TO_CUISINE: Record<string, string> = Object.fromEntries(
   Object.entries(CUISINE_TO_YELP_ALIAS).map(([cuisine, alias]) => [alias, cuisine])
@@ -96,14 +115,39 @@ function toPriceLevel(price: string | undefined): number | null {
   return price ? price.length - 1 : null;
 }
 
+function mapYelpBusinesses(businesses: YelpBusiness[]): Place[] {
+  return businesses
+    .filter((b) => b.coordinates.latitude !== null && b.coordinates.longitude !== null)
+    .map((b): Place => {
+      const cuisines = toCuisines(b.categories);
+      return {
+        id: b.id,
+        name: b.name,
+        // Yelp's search response only ever includes one photo per business (a details call
+        // per business would be needed for more, which we won't do per-place in a shared
+        // deck build) — the swipe card's photo-cycling control just won't render for these.
+        photoUrls: b.image_url ? [b.image_url] : [],
+        cuisines,
+        diningStyles: toDiningStyles(b.categories),
+        priceLevel: toPriceLevel(b.price),
+        rating: b.rating,
+        ratingCount: b.review_count ?? null,
+        lat: b.coordinates.latitude as number,
+        lng: b.coordinates.longitude as number,
+        address: b.location.display_address.length > 0 ? b.location.display_address.join(", ") : null,
+        // Yelp's search response doesn't include live open/closed hours — a details call
+        // per business would be needed for that, which we won't do per-place in a shared
+        // deck build. The "Open now" chip just won't render for Yelp-sourced cards.
+        openNow: null,
+        mapsUri: b.url ?? null,
+      };
+    });
+}
+
 export class YelpPlacesProvider implements PlacesProvider {
   constructor(private readonly apiKey: string) {}
 
-  async searchNearby(
-    location: GeoPoint,
-    filters: PlaceSearchFilters,
-    options: SearchNearbyOptions
-  ): Promise<Place[]> {
+  private buildSearchUrl(location: GeoPoint, filters: PlaceSearchFilters, options: SearchNearbyOptions): URL {
     const url = new URL(`${YELP_API_BASE}/businesses/search`);
     url.searchParams.set("latitude", String(location.lat));
     url.searchParams.set("longitude", String(location.lng));
@@ -113,53 +157,52 @@ export class YelpPlacesProvider implements PlacesProvider {
       url.searchParams.set("offset", String(options.offset));
     }
     url.searchParams.set("sort_by", "best_match");
-    // Cuisine/dining-style are soft ranking signals now (see PlaceSearchFilters), not a
-    // fetch-time restriction — always pull Yelp's broad "restaurants" category so preference
-    // matching downstream has a full, unfiltered pool to rank against.
-    url.searchParams.set("categories", "restaurants");
-
     if (filters.maxPriceLevel !== null) {
       // Yelp's price param is "at these levels" (1-4, comma-separated), not a ceiling —
       // 1..cap+1 expresses "up to this price".
       const levels = Array.from({ length: filters.maxPriceLevel + 1 }, (_, i) => i + 1);
       url.searchParams.set("price", levels.join(","));
     }
+    return url;
+  }
 
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${this.apiKey}` },
-    });
+  async searchNearby(
+    location: GeoPoint,
+    filters: PlaceSearchFilters,
+    options: SearchNearbyOptions
+  ): Promise<Place[]> {
+    const url = this.buildSearchUrl(location, filters, options);
+    // Cuisine/dining-style are soft ranking signals now (see PlaceSearchFilters), not a
+    // fetch-time restriction — always pull Yelp's broad "restaurants" category so preference
+    // matching downstream has a full, unfiltered pool to rank against.
+    url.searchParams.set("categories", "restaurants");
 
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${this.apiKey}` } });
     if (!response.ok) {
       throw new Error(`Yelp search failed (${response.status}): ${await response.text()}`);
     }
-
     const data: YelpSearchResponse = await response.json();
+    return mapYelpBusinesses(data.businesses);
+  }
 
-    return data.businesses
-      .filter((b) => b.coordinates.latitude !== null && b.coordinates.longitude !== null)
-      .map((b): Place => {
-        const cuisines = toCuisines(b.categories);
-        return {
-          id: b.id,
-          name: b.name,
-          // Yelp's search response only ever includes one photo per business (a details call
-          // per business would be needed for more, which we won't do per-place in a shared
-          // deck build) — the swipe card's photo-cycling control just won't render for these.
-          photoUrls: b.image_url ? [b.image_url] : [],
-          cuisines,
-          diningStyles: toDiningStyles(b.categories),
-          priceLevel: toPriceLevel(b.price),
-          rating: b.rating,
-          ratingCount: b.review_count ?? null,
-          lat: b.coordinates.latitude as number,
-          lng: b.coordinates.longitude as number,
-          address: b.location.display_address.length > 0 ? b.location.display_address.join(", ") : null,
-          // Yelp's search response doesn't include live open/closed hours — a details call
-          // per business would be needed for that, which we won't do per-place in a shared
-          // deck build. The "Open now" chip just won't render for Yelp-sourced cards.
-          openNow: null,
-          mapsUri: b.url ?? null,
-        };
-      });
+  // Best-effort — unverified against live data since Yelp isn't the active provider. Yelp's
+  // `term` param is a free-text search field, roughly analogous to Google Text Search's
+  // textQuery, but Yelp's search endpoint has no real pagination beyond `offset` (capped at
+  // 1000 total per Yelp's docs), so this doesn't get the same >20-result win Google's does.
+  async searchByQuery(
+    query: string,
+    location: GeoPoint,
+    filters: PlaceSearchFilters,
+    options: SearchNearbyOptions
+  ): Promise<Place[]> {
+    const url = this.buildSearchUrl(location, filters, options);
+    url.searchParams.set("term", query);
+
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${this.apiKey}` } });
+    if (!response.ok) {
+      throw new Error(`Yelp search failed (${response.status}): ${await response.text()}`);
+    }
+    const data: YelpSearchResponse = await response.json();
+    return mapYelpBusinesses(data.businesses);
   }
 }

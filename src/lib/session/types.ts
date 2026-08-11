@@ -1,4 +1,30 @@
-export const CUISINE_OPTIONS = ["Sushi", "Pizza", "Thai", "BBQ", "Vegan", "Burgers", "Fast Food"] as const;
+// Expanded from an initial 7 after sampling ~200 real Santa Ana, CA places against the API —
+// the original list under-covered common cuisines (Mexican/Chinese/Japanese/Vietnamese/Korean
+// had zero chip coverage despite being far more common there than Thai/BBQ/Vegan).
+export const CUISINE_OPTIONS = [
+  "Mexican",
+  "Italian",
+  "Chinese",
+  "Japanese",
+  "Sushi",
+  "Thai",
+  "Indian",
+  "Korean",
+  "Vietnamese",
+  "Mediterranean",
+  "Greek",
+  "French",
+  "American",
+  "BBQ",
+  "Seafood",
+  "Steakhouse",
+  "Pizza",
+  "Burgers",
+  "Vegan",
+  "Fast Food",
+  "Middle Eastern",
+  "Filipino",
+] as const;
 export type CuisineOption = (typeof CUISINE_OPTIONS)[number];
 
 // Dining-style buckets — a second, independent preference axis from cuisine (a place can be

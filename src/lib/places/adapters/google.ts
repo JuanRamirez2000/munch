@@ -9,6 +9,12 @@ const GOOGLE_PLACES_API_BASE = "https://places.googleapis.com/v1";
 // through to widening. No changes needed to the shared load-more logic for this provider.
 const GOOGLE_MAX_RESULT_COUNT = 20;
 const GOOGLE_MAX_RADIUS_METERS = 50_000;
+// Text Search (New), unlike Nearby Search, actually paginates — verified live: 3 pages of 20
+// with zero overlap, capping at 60 total (matches the documented limit).
+const TEXT_SEARCH_PAGE_SIZE = 20;
+const TEXT_SEARCH_MAX_RESULTS = 60;
+// Google requires a short pause before a nextPageToken becomes valid to use.
+const TEXT_SEARCH_PAGE_TOKEN_DELAY_MS = 2000;
 
 // `rating`/`priceLevel` already put every request at the Nearby Search "Enterprise" SKU tier
 // (verified directly against Google's field/pricing docs — an earlier version of this comment
@@ -29,17 +35,36 @@ const FIELD_MASK = [
   "places.currentOpeningHours",
   "places.googleMapsUri",
 ].join(",");
+// Text Search's field mask needs nextPageToken explicitly requested (top-level response
+// fields are masked too, not just nested places.* ones) — Nearby Search has no pagination so
+// its field mask is left alone rather than requesting a field it'll never return.
+const TEXT_SEARCH_FIELD_MASK = `${FIELD_MASK},nextPageToken`;
 
-// Bridges our fixed 6-chip cuisine vocabulary to Google's `types` taxonomy (snake_case,
-// suffixed "_restaurant"). Same pattern as the Yelp adapter's alias table.
+// Bridges our cuisine vocabulary (session/types.ts's CUISINE_OPTIONS) to Google's `types`
+// taxonomy (snake_case, suffixed "_restaurant"). Same pattern as the Yelp adapter's alias table.
 const CUISINE_TO_GOOGLE_TYPE: Record<string, string> = {
+  Mexican: "mexican_restaurant",
+  Italian: "italian_restaurant",
+  Chinese: "chinese_restaurant",
+  Japanese: "japanese_restaurant",
   Sushi: "sushi_restaurant",
-  Pizza: "pizza_restaurant",
   Thai: "thai_restaurant",
+  Indian: "indian_restaurant",
+  Korean: "korean_restaurant",
+  Vietnamese: "vietnamese_restaurant",
+  Mediterranean: "mediterranean_restaurant",
+  Greek: "greek_restaurant",
+  French: "french_restaurant",
+  American: "american_restaurant",
   BBQ: "barbecue_restaurant",
-  Vegan: "vegan_restaurant",
+  Seafood: "seafood_restaurant",
+  Steakhouse: "steak_house",
+  Pizza: "pizza_restaurant",
   Burgers: "hamburger_restaurant",
+  Vegan: "vegan_restaurant",
   "Fast Food": "fast_food_restaurant",
+  "Middle Eastern": "middle_eastern_restaurant",
+  Filipino: "filipino_restaurant",
 };
 const GOOGLE_TYPE_TO_CUISINE: Record<string, string> = Object.fromEntries(
   Object.entries(CUISINE_TO_GOOGLE_TYPE).map(([cuisine, type]) => [type, cuisine])
@@ -148,6 +173,7 @@ interface GooglePlace {
 
 interface GoogleSearchResponse {
   places?: GooglePlace[];
+  nextPageToken?: string;
 }
 
 function humanizeType(type: string): string {
@@ -200,6 +226,36 @@ function matchesMaxPrice(priceLevel: number | null, maxPriceLevel: number | null
   return priceLevel <= maxPriceLevel;
 }
 
+// Shared by searchNearby and searchByQuery — both hit different endpoints but return the same
+// GooglePlace shape, so normalization into our Place type only needs writing once.
+function mapGooglePlaces(places: GooglePlace[], maxPriceLevel: number | null): Place[] {
+  return places
+    .filter((p) => p.location)
+    .map((p): Place => {
+      const priceLevel = p.priceLevel ? (PRICE_LEVEL_MAP[p.priceLevel] ?? null) : null;
+      return {
+        id: p.id,
+        name: p.displayName?.text ?? "Unnamed",
+        photoUrls: toPhotoUrls(p.photos),
+        cuisines: toCuisines(p.types),
+        diningStyles: toDiningStyles(p.types),
+        priceLevel,
+        rating: p.rating ?? null,
+        ratingCount: p.userRatingCount ?? null,
+        lat: p.location!.latitude,
+        lng: p.location!.longitude,
+        address: p.formattedAddress ?? null,
+        openNow: p.currentOpeningHours?.openNow ?? null,
+        mapsUri: p.googleMapsUri ?? null,
+      };
+    })
+    .filter((place) => matchesMaxPrice(place.priceLevel, maxPriceLevel));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export class GooglePlacesProvider implements PlacesProvider {
   constructor(private readonly apiKey: string) {}
 
@@ -238,27 +294,56 @@ export class GooglePlacesProvider implements PlacesProvider {
     }
 
     const data: GoogleSearchResponse = await response.json();
+    return mapGooglePlaces(data.places ?? [], filters.maxPriceLevel);
+  }
 
-    return (data.places ?? [])
-      .filter((p) => p.location)
-      .map((p): Place => {
-        const priceLevel = p.priceLevel ? (PRICE_LEVEL_MAP[p.priceLevel] ?? null) : null;
-        return {
-          id: p.id,
-          name: p.displayName?.text ?? "Unnamed",
-          photoUrls: toPhotoUrls(p.photos),
-          cuisines: toCuisines(p.types),
-          diningStyles: toDiningStyles(p.types),
-          priceLevel,
-          rating: p.rating ?? null,
-          ratingCount: p.userRatingCount ?? null,
-          lat: p.location!.latitude,
-          lng: p.location!.longitude,
-          address: p.formattedAddress ?? null,
-          openNow: p.currentOpeningHours?.openNow ?? null,
-          mapsUri: p.googleMapsUri ?? null,
-        };
-      })
-      .filter((place) => matchesMaxPrice(place.priceLevel, filters.maxPriceLevel));
+  // Text Search (New) — unlike searchNearby, this actually paginates (verified live: up to 60
+  // results across 3 pages), which is what load-more's "smart search" path needs when steering
+  // toward a cuisine/style the group has already liked. All params besides pageToken must stay
+  // identical across pages, per Google's docs; only paginates past page 1 if the caller actually
+  // needs more than one page's worth, since each extra page costs a mandatory ~2s token-delay.
+  async searchByQuery(
+    query: string,
+    location: GeoPoint,
+    filters: PlaceSearchFilters,
+    options: SearchNearbyOptions
+  ): Promise<Place[]> {
+    const baseBody = {
+      textQuery: query,
+      locationBias: {
+        circle: {
+          center: { latitude: location.lat, longitude: location.lng },
+          radius: Math.min(GOOGLE_MAX_RADIUS_METERS, filters.radiusMeters),
+        },
+      },
+      pageSize: TEXT_SEARCH_PAGE_SIZE,
+    };
+
+    const collected: GooglePlace[] = [];
+    let pageToken: string | undefined;
+    const targetCount = Math.min(TEXT_SEARCH_MAX_RESULTS, options.limit);
+
+    do {
+      if (pageToken) await sleep(TEXT_SEARCH_PAGE_TOKEN_DELAY_MS);
+      const response = await fetch(`${GOOGLE_PLACES_API_BASE}/places:searchText`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": this.apiKey,
+          "X-Goog-FieldMask": TEXT_SEARCH_FIELD_MASK,
+        },
+        body: JSON.stringify(pageToken ? { ...baseBody, pageToken } : baseBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Google Text Search failed (${response.status}): ${await response.text()}`);
+      }
+
+      const data: GoogleSearchResponse = await response.json();
+      collected.push(...(data.places ?? []));
+      pageToken = data.nextPageToken;
+    } while (pageToken && collected.length < targetCount);
+
+    return mapGooglePlaces(collected.slice(0, targetCount), filters.maxPriceLevel);
   }
 }

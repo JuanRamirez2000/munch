@@ -10,6 +10,7 @@ function rowToDeckPlace(row: PlaceRow): DeckPlace {
     name: row.name,
     photoUrls: row.photo_urls,
     cuisines: row.cuisines,
+    diningStyles: row.dining_styles,
     priceLevel: row.price_level,
     rating: row.rating,
     ratingCount: row.rating_count,

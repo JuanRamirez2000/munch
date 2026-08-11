@@ -9,8 +9,8 @@ export interface Place {
   cuisines: string[];
   // Dining-style buckets (Fast Food/Cafe/Bar/Bakery/Fine Dining/Sit-down) — a normalized
   // classification an adapter derives from its own raw type/category taxonomy, parallel to
-  // `cuisines`. Transient: used by scorePlaces() as a ranking signal, never persisted to the
-  // places table (unlike cuisines, which is shown as a chip on the swipe card).
+  // `cuisines`. Used by scorePlaces() as a ranking signal, and persisted so load-more can later
+  // read back what style the group has actually liked (see getLikedPreferenceSignal()).
   diningStyles: string[];
   /** 0 ($) to 3 ($$$$), or null if the provider doesn't report it. */
   priceLevel: number | null;
@@ -49,6 +49,16 @@ export interface SearchNearbyOptions {
 
 export interface PlacesProvider {
   searchNearby(
+    location: GeoPoint,
+    filters: PlaceSearchFilters,
+    options: SearchNearbyOptions
+  ): Promise<Place[]>;
+  /** Free-text search (e.g. Google Text Search (New), Yelp's `term` param) — optional since not
+   * every provider supports it. Used by load-more's "smart search" once there's a liked-places
+   * signal to build a query around, since (for Google at least) it also actually paginates past
+   * 20 results, unlike searchNearby. Callers must fall back to searchNearby when absent. */
+  searchByQuery?(
+    query: string,
     location: GeoPoint,
     filters: PlaceSearchFilters,
     options: SearchNearbyOptions

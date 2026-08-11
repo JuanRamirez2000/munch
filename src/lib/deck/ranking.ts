@@ -104,6 +104,7 @@ export function scoredPlaceToRow(
     name: scored.place.name,
     photo_urls: scored.place.photoUrls,
     cuisines: scored.place.cuisines,
+    dining_styles: scored.place.diningStyles,
     price_level: scored.place.priceLevel,
     rating: scored.place.rating,
     rating_count: scored.place.ratingCount,

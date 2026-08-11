@@ -12,10 +12,12 @@ function rowToDeckPlace(row: PlaceRow): DeckPlace {
     cuisines: row.cuisines,
     priceLevel: row.price_level,
     rating: row.rating,
+    ratingCount: row.rating_count,
     lat: row.lat,
     lng: row.lng,
     address: row.address,
     openNow: row.open_now,
+    mapsUri: row.google_maps_uri,
     deckOrder: row.deck_order,
     score: row.score,
   };

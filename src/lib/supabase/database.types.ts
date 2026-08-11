@@ -54,6 +54,7 @@ export type Database = {
           address: string | null
           cuisines: string[]
           deck_order: number
+          google_maps_uri: string | null
           id: string
           lat: number
           lng: number
@@ -63,6 +64,7 @@ export type Database = {
           price_level: number | null
           provider_place_id: string
           rating: number | null
+          rating_count: number | null
           score: number
           session_id: string
         }
@@ -70,6 +72,7 @@ export type Database = {
           address?: string | null
           cuisines?: string[]
           deck_order: number
+          google_maps_uri?: string | null
           id?: string
           lat: number
           lng: number
@@ -79,6 +82,7 @@ export type Database = {
           price_level?: number | null
           provider_place_id: string
           rating?: number | null
+          rating_count?: number | null
           score?: number
           session_id: string
         }
@@ -86,6 +90,7 @@ export type Database = {
           address?: string | null
           cuisines?: string[]
           deck_order?: number
+          google_maps_uri?: string | null
           id?: string
           lat?: number
           lng?: number

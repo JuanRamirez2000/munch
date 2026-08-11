@@ -62,6 +62,8 @@ interface YelpBusiness {
   categories: YelpCategory[];
   price?: string;
   rating: number;
+  review_count?: number;
+  url?: string;
   coordinates: { latitude: number | null; longitude: number | null };
   location: { display_address: string[] };
 }
@@ -148,6 +150,7 @@ export class YelpPlacesProvider implements PlacesProvider {
           diningStyles: toDiningStyles(b.categories),
           priceLevel: toPriceLevel(b.price),
           rating: b.rating,
+          ratingCount: b.review_count ?? null,
           lat: b.coordinates.latitude as number,
           lng: b.coordinates.longitude as number,
           address: b.location.display_address.length > 0 ? b.location.display_address.join(", ") : null,
@@ -155,6 +158,7 @@ export class YelpPlacesProvider implements PlacesProvider {
           // per business would be needed for that, which we won't do per-place in a shared
           // deck build. The "Open now" chip just won't render for Yelp-sourced cards.
           openNow: null,
+          mapsUri: b.url ?? null,
         };
       });
   }

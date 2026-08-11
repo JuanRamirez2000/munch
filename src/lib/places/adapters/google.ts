@@ -10,9 +10,12 @@ const GOOGLE_PLACES_API_BASE = "https://places.googleapis.com/v1";
 const GOOGLE_MAX_RESULT_COUNT = 20;
 const GOOGLE_MAX_RADIUS_METERS = 50_000;
 
-// Deliberately conservative field mask — stays within the "Pro" SKU tier (photos, rating,
-// price, basic identity/location), avoiding fields (like opening hours) that would escalate
-// to Enterprise pricing. Matches the same "openNow always null" tradeoff made for Yelp.
+// `rating`/`priceLevel` already put every request at the Nearby Search "Enterprise" SKU tier
+// (verified directly against Google's field/pricing docs — an earlier version of this comment
+// incorrectly said "Pro"). Since we're already paying for Enterprise, currentOpeningHours/
+// userRatingCount/googleMapsUri are effectively free marginal additions — no reason to leave
+// them off. Still deliberately excludes the next tier up ("Enterprise + Atmosphere": reviews,
+// goodForGroups, outdoorSeating, etc.) since that's a real cost-tier decision, not a freebie.
 const FIELD_MASK = [
   "places.id",
   "places.displayName",
@@ -21,7 +24,10 @@ const FIELD_MASK = [
   "places.types",
   "places.priceLevel",
   "places.rating",
+  "places.userRatingCount",
   "places.photos",
+  "places.currentOpeningHours",
+  "places.googleMapsUri",
 ].join(",");
 
 // Bridges our fixed 6-chip cuisine vocabulary to Google's `types` taxonomy (snake_case,
@@ -39,7 +45,11 @@ const GOOGLE_TYPE_TO_CUISINE: Record<string, string> = Object.fromEntries(
   Object.entries(CUISINE_TO_GOOGLE_TYPE).map(([cuisine, type]) => [type, cuisine])
 );
 
-// Structural/generic types every restaurant carries — not useful as a displayed "cuisine".
+// Structural/generic types every restaurant carries, plus adjacent-business types Google
+// attaches to real restaurants (catering, delivery-only listings, restaurants inside grocery
+// stores, event/banquet venues) — none of these read as a "cuisine" chip. Found by sampling
+// ~200 real Santa Ana, CA places: without this, 26% of places showed a junk chip like "Service"
+// or "Food Store" as their top cuisine tag.
 const GENERIC_TYPES = new Set([
   "restaurant",
   "food",
@@ -47,6 +57,22 @@ const GENERIC_TYPES = new Set([
   "establishment",
   "meal_takeaway",
   "meal_delivery",
+  "service",
+  "food_delivery",
+  "catering_service",
+  "food_store",
+  "store",
+  "shipping_service",
+  "event_venue",
+  "banquet_hall",
+  "night_club",
+  "live_music_venue",
+  "manufacturer",
+  "wholesaler",
+  "supplier",
+  "health",
+  "cafeteria",
+  "barbecue_area",
 ]);
 
 // Buckets Google's ~140 food/drink Table A types into our fixed 6-option dining-style
@@ -114,7 +140,10 @@ interface GooglePlace {
   types?: string[];
   priceLevel?: string;
   rating?: number;
+  userRatingCount?: number;
   photos?: { name: string }[];
+  currentOpeningHours?: { openNow?: boolean };
+  googleMapsUri?: string;
 }
 
 interface GoogleSearchResponse {
@@ -222,11 +251,12 @@ export class GooglePlacesProvider implements PlacesProvider {
           diningStyles: toDiningStyles(p.types),
           priceLevel,
           rating: p.rating ?? null,
+          ratingCount: p.userRatingCount ?? null,
           lat: p.location!.latitude,
           lng: p.location!.longitude,
           address: p.formattedAddress ?? null,
-          // See FIELD_MASK comment — opening hours aren't requested, so this stays null.
-          openNow: null,
+          openNow: p.currentOpeningHours?.openNow ?? null,
+          mapsUri: p.googleMapsUri ?? null,
         };
       })
       .filter((place) => matchesMaxPrice(place.priceLevel, filters.maxPriceLevel));

@@ -106,10 +106,12 @@ export function scoredPlaceToRow(
     cuisines: scored.place.cuisines,
     price_level: scored.place.priceLevel,
     rating: scored.place.rating,
+    rating_count: scored.place.ratingCount,
     lat: scored.place.lat,
     lng: scored.place.lng,
     address: scored.place.address,
     open_now: scored.place.openNow,
+    google_maps_uri: scored.place.mapsUri,
     deck_order: deckOrder,
     score: scored.score,
   };

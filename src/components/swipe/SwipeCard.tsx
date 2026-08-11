@@ -18,6 +18,12 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
+function formatRatingCount(count: number | null): string {
+  if (count === null) return "";
+  const compact = count >= 1000 ? `${(count / 1000).toFixed(1)}k` : String(count);
+  return ` (${compact})`;
+}
+
 // Parent (swipe/page.tsx) mounts this with key={place.id}, so photoIndex resets to 0 whenever
 // the card underneath changes rather than carrying over a stale index from the previous place.
 export function SwipeCard({ place, distanceMiles, x, active, onRelease }: SwipeCardProps) {
@@ -92,7 +98,7 @@ export function SwipeCard({ place, distanceMiles, x, active, onRelease }: SwipeC
         <div className="absolute inset-x-0 bottom-0 p-5 text-white">
           <div className="text-[22px] font-bold">{place.name}</div>
           <div className="mt-1 text-[14px] opacity-90">
-            {place.rating !== null ? `★${place.rating.toFixed(1)} · ` : ""}
+            {place.rating !== null ? `★${place.rating.toFixed(1)}${formatRatingCount(place.ratingCount)} · ` : ""}
             {distanceMiles.toFixed(1)} mi
           </div>
         </div>

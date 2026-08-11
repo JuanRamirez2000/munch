@@ -15,10 +15,17 @@ export interface Place {
   /** 0 ($) to 3 ($$$$), or null if the provider doesn't report it. */
   priceLevel: number | null;
   rating: number | null;
+  /** How many ratings `rating` is based on — lets a UI/scoring signal discount a 5.0 from 3
+   * reviews versus a 4.6 from 2,000. Null if the provider doesn't report it. */
+  ratingCount: number | null;
   lat: number;
   lng: number;
   address: string | null;
   openNow: boolean | null;
+  /** Provider's own place page/directions link, when available — more reliable than building
+   * a text-query URL ourselves (exact place, not a fuzzy match that could hit the wrong branch
+   * of a chain). Null if the provider doesn't return one. */
+  mapsUri: string | null;
 }
 
 // Cuisine/dining-style are NOT here — they're soft ranking signals now (see scorePlaces()),

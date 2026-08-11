@@ -65,10 +65,12 @@ export class MockPlacesProvider implements PlacesProvider {
         diningStyles: toDiningStyles(seed),
         priceLevel: seed.priceLevel,
         rating: seed.rating,
+        ratingCount: null,
         lat,
         lng,
         address: seed.address,
         openNow: seed.openNow,
+        mapsUri: null,
       };
       return { place, distanceMeters: haversineDistanceMeters(location, { lat, lng }) };
     });

@@ -66,17 +66,17 @@ export function SwipeCard({ place, distanceMiles, x, active, onRelease }: SwipeC
 
         <div className="absolute left-4 top-4 flex flex-wrap gap-1.5">
           {place.cuisines[0] && (
-            <span className="rounded-full bg-white/90 px-2.5 py-1 text-[12px] font-semibold text-ink">
+            <span className="rounded-full bg-white/90 px-2.5 py-1 text-[12px] font-semibold text-[#201c40]">
               {place.cuisines[0]}
             </span>
           )}
           {place.priceLevel !== null && (
-            <span className="rounded-full bg-white/90 px-2.5 py-1 text-[12px] font-semibold text-ink">
+            <span className="rounded-full bg-white/90 px-2.5 py-1 text-[12px] font-semibold text-[#201c40]">
               {priceLevelToLabel(place.priceLevel)}
             </span>
           )}
           {place.openNow && (
-            <span className="rounded-full bg-[rgba(229,243,231,.95)] px-2.5 py-1 text-[12px] font-semibold text-like">
+            <span className="rounded-full bg-[rgba(229,243,231,.95)] px-2.5 py-1 text-[12px] font-semibold text-[#1e9a5a]">
               Open now
             </span>
           )}
@@ -84,13 +84,13 @@ export function SwipeCard({ place, distanceMiles, x, active, onRelease }: SwipeC
 
         <motion.div
           style={{ opacity: likeOpacity }}
-          className="absolute right-4 top-4 -rotate-[10deg] rounded-md border-[2.5px] border-like bg-white/90 px-2.5 py-1 text-[15px] font-bold text-like"
+          className="absolute right-4 top-4 -rotate-[10deg] rounded-md border-[2.5px] border-[#1e9a5a] bg-white/90 px-2.5 py-1 text-[15px] font-bold text-[#1e9a5a]"
         >
           LIKE
         </motion.div>
         <motion.div
           style={{ opacity: passOpacity }}
-          className="absolute right-4 top-4 rotate-[10deg] rounded-md border-[2.5px] border-pass bg-white/90 px-2.5 py-1 text-[15px] font-bold text-pass"
+          className="absolute right-4 top-4 rotate-[10deg] rounded-md border-[2.5px] border-[#c0433a] bg-white/90 px-2.5 py-1 text-[15px] font-bold text-[#c0433a]"
         >
           PASS
         </motion.div>

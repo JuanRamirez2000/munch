@@ -16,6 +16,137 @@
   --color-like-tint: #e5f3e7;
   --color-pass: #b23a2e;
   --color-pass-tint: #fbeae7;
+  --shadow-accent-glow-rgb: 0 6px 14px -6px rgba(193, 96, 42, 0.5);
+  --shadow-like-glow-rgb: 0 6px 14px -6px rgba(47, 143, 78, 0.5);
+}
+
+/* Theme presets — swapped at runtime via [data-theme] on <html> by ThemeSwitcher.
+   Every theme redefines the full token set above so components never fall back
+   to the default palette partway through. */
+html[data-theme="midnight"] {
+  --color-bg: #14161c;
+  --color-surface: #1d2029;
+  --color-surface-alt: #262a35;
+  --color-ink: #eef0f5;
+  --color-ink-muted: #a8adba;
+  --color-ink-faint: #7d8291;
+  --color-accent: #e8a33d;
+  --color-accent-hover: #f4b95e;
+  --color-accent-tint: #3a2f1a;
+  --color-like: #4ec97f;
+  --color-like-tint: #16301f;
+  --color-pass: #f0645a;
+  --color-pass-tint: #3a1a18;
+  --shadow-accent-glow-rgb: 0 6px 14px -6px rgba(232, 163, 61, 0.45);
+  --shadow-like-glow-rgb: 0 6px 14px -6px rgba(78, 201, 127, 0.45);
+}
+
+html[data-theme="ocean"] {
+  --color-bg: #eef5f7;
+  --color-surface: #ffffff;
+  --color-surface-alt: #e2eef2;
+  --color-ink: #16303a;
+  --color-ink-muted: #45636d;
+  --color-ink-faint: #5a7680;
+  --color-accent: #1478a3;
+  --color-accent-hover: #0e5877;
+  --color-accent-tint: #dcf0f7;
+  --color-like: #229478;
+  --color-like-tint: #dcf3ec;
+  --color-pass: #c0433a;
+  --color-pass-tint: #fbe6e3;
+  --shadow-accent-glow-rgb: 0 6px 14px -6px rgba(20, 120, 163, 0.5);
+  --shadow-like-glow-rgb: 0 6px 14px -6px rgba(34, 148, 120, 0.5);
+}
+
+html[data-theme="forest"] {
+  --color-bg: #f2f5ec;
+  --color-surface: #ffffff;
+  --color-surface-alt: #e7ecdc;
+  --color-ink: #23301c;
+  --color-ink-muted: #4d5c40;
+  --color-ink-faint: #5f6e52;
+  --color-accent: #4c7a34;
+  --color-accent-hover: #375c24;
+  --color-accent-tint: #e6efd9;
+  --color-like: #1f8a5f;
+  --color-like-tint: #dcf0e4;
+  --color-pass: #b23a2e;
+  --color-pass-tint: #fbeae7;
+  --shadow-accent-glow-rgb: 0 6px 14px -6px rgba(76, 122, 52, 0.5);
+  --shadow-like-glow-rgb: 0 6px 14px -6px rgba(31, 138, 95, 0.5);
+}
+
+html[data-theme="grape"] {
+  --color-bg: #f5f1f9;
+  --color-surface: #ffffff;
+  --color-surface-alt: #ece3f3;
+  --color-ink: #2a1f36;
+  --color-ink-muted: #5c4d6d;
+  --color-ink-faint: #6e5f7e;
+  --color-accent: #7c3fae;
+  --color-accent-hover: #5c2c85;
+  --color-accent-tint: #f0e5fa;
+  --color-like: #2f8f4e;
+  --color-like-tint: #e5f3e7;
+  --color-pass: #b23a2e;
+  --color-pass-tint: #fbeae7;
+  --shadow-accent-glow-rgb: 0 6px 14px -6px rgba(124, 63, 174, 0.5);
+  --shadow-like-glow-rgb: 0 6px 14px -6px rgba(47, 143, 78, 0.5);
+}
+
+html[data-theme="sunset"] {
+  --color-bg: #fdf1f2;
+  --color-surface: #ffffff;
+  --color-surface-alt: #fbe4e6;
+  --color-ink: #331b24;
+  --color-ink-muted: #6b3f4d;
+  --color-ink-faint: #7d5261;
+  --color-accent: #e0447e;
+  --color-accent-hover: #b02f61;
+  --color-accent-tint: #fce3ee;
+  --color-like: #2f8f4e;
+  --color-like-tint: #e5f3e7;
+  --color-pass: #b23a2e;
+  --color-pass-tint: #fbeae7;
+  --shadow-accent-glow-rgb: 0 6px 14px -6px rgba(224, 68, 126, 0.5);
+  --shadow-like-glow-rgb: 0 6px 14px -6px rgba(47, 143, 78, 0.5);
+}
+
+html[data-theme="slate"] {
+  --color-bg: #f4f5f7;
+  --color-surface: #ffffff;
+  --color-surface-alt: #e7e9ed;
+  --color-ink: #1c2027;
+  --color-ink-muted: #4d5563;
+  --color-ink-faint: #626a78;
+  --color-accent: #3355d8;
+  --color-accent-hover: #23409f;
+  --color-accent-tint: #e3e9fc;
+  --color-like: #1e9a5a;
+  --color-like-tint: #dff3e7;
+  --color-pass: #d23f3f;
+  --color-pass-tint: #fbe4e4;
+  --shadow-accent-glow-rgb: 0 6px 14px -6px rgba(51, 85, 216, 0.5);
+  --shadow-like-glow-rgb: 0 6px 14px -6px rgba(30, 154, 90, 0.5);
+}
+
+html[data-theme="citrus"] {
+  --color-bg: #fdf8ec;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f7edcd;
+  --color-ink: #2c2610;
+  --color-ink-muted: #6b5f2f;
+  --color-ink-faint: #7d7040;
+  --color-accent: #d99a12;
+  --color-accent-hover: #a4740a;
+  --color-accent-tint: #fbedc7;
+  --color-like: #4a9c2e;
+  --color-like-tint: #e8f3de;
+  --color-pass: #c1432f;
+  --color-pass-tint: #fbe6e2;
+  --shadow-accent-glow-rgb: 0 6px 14px -6px rgba(217, 154, 18, 0.5);
+  --shadow-like-glow-rgb: 0 6px 14px -6px rgba(74, 156, 46, 0.5);
 }
 
 @theme inline {
@@ -45,8 +176,8 @@
   --shadow-elevation-sm: 0 1px 2px rgba(30, 20, 10, 0.06);
   --shadow-elevation-md: 0 8px 20px -10px rgba(30, 20, 10, 0.16);
   --shadow-elevation-lg: 0 24px 48px -20px rgba(30, 20, 10, 0.22);
-  --shadow-accent-glow: 0 6px 14px -6px rgba(193, 96, 42, 0.5);
-  --shadow-like-glow: 0 6px 14px -6px rgba(47, 143, 78, 0.5);
+  --shadow-accent-glow: var(--shadow-accent-glow-rgb);
+  --shadow-like-glow: var(--shadow-like-glow-rgb);
 }
 
 /* Unlayered rules beat Tailwind's utility layer regardless of specificity — without @layer

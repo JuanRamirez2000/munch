@@ -36,12 +36,28 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
   const weights = session.weights as unknown as SessionWeights;
   const origin = { lat: session.origin_lat, lng: session.origin_lng };
   const radiusMeters = milesToMeters(filters.radiusMiles);
+  const provider = getPlacesProvider();
 
-  const places = await getPlacesProvider().searchNearby(
-    origin,
-    { maxPriceLevel: filters.price, radiusMeters },
-    { limit: session.deck_size }
+  // Nearby Search always returns the same top ~20 for a fixed location/radius/price, since
+  // cuisine/style no longer narrow that request (see PlaceSearchFilters) — reordering that
+  // fixed pool by preference alone is a subtle effect (preference is the smallest of the three
+  // score weights), so switching cuisine/style rarely surfaces a visibly different deck. When
+  // the host has actually selected preferences, build the initial fetch around them via Text
+  // Search instead — its relevance ranking naturally favors matching places without hard-
+  // excluding anything, so a mismatched deck never goes empty. "Sit-down" is excluded from the
+  // query text since it's our own internal label, not a real search term (see load-more's
+  // getDominantLikedSignal for the same fix, found by testing this live).
+  const filterQuery = [...filters.cuisineIncludes, ...filters.styleIncludes.filter((s) => s !== "Sit-down")].join(
+    " "
   );
+  const searchByQuery = provider.searchByQuery?.bind(provider);
+
+  const places =
+    filterQuery.length > 0 && searchByQuery
+      ? await searchByQuery(`${filterQuery} restaurants`, origin, { maxPriceLevel: filters.price, radiusMeters }, {
+          limit: session.deck_size,
+        })
+      : await provider.searchNearby(origin, { maxPriceLevel: filters.price, radiusMeters }, { limit: session.deck_size });
 
   const ranked = scorePlaces(places, origin, filters, weights, radiusMeters).sort(
     (a, b) => b.score - a.score
